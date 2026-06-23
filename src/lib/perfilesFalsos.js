@@ -1046,5 +1046,31 @@ export const PERFILES_FALSOS = [
     "desafios_enviados": 10,
     "ubicaciones_cambiadas": 0,
     "ultimo_partido_en": "2026-06-02T23:39:07.084+00:00"
+  },
+  {
+    "id": "fake-407ebe2b-2d1f-4b36-88e7-a6c7091aec34",
+    "nombre": "Iván Reyes",
+    "edad": 22,
+    "avatar_url": "https://gjvaebwhngqmhtcgharm.supabase.co/storage/v1/object/public/avatars/407ebe2b-2d1f-4b36-88e7-a6c7091aec34/avatar.jpg",
+    "deporte": "Pádel",
+    "nivel": "Avanzado",
+    "descripcion": "Buscando rivales para torneos locales, nivel avanzado.",
+    "provincia": "Santa Cruz de Tenerife",
+    "isla": "Tenerife",
+    "puntos": 1320,
+    "partidos_jugados": 21,
+    "victorias": 14,
+    "derrotas": 7,
+    "racha_actual": 2,
+    "desafios_enviados": 9,
+    "ubicaciones_cambiadas": 0,
+    "ultimo_partido_en": "2026-06-10T18:20:00.000+00:00"
   }
 ];
+
+// Mezcla aleatoria (Fisher-Yates) en cada carga de la app, para que no
+// aparezcan siempre en el mismo orden ni agrupados por género.
+for (let i = PERFILES_FALSOS.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [PERFILES_FALSOS[i], PERFILES_FALSOS[j]] = [PERFILES_FALSOS[j], PERFILES_FALSOS[i]];
+}
