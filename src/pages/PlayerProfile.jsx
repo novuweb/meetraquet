@@ -6,6 +6,7 @@ import { LOGROS_DEF, getLogrosConseguidos } from '../lib/achievements';
 import { ubicacionLabel } from '../lib/provincias';
 import { DEMO_MODE } from '../lib/demo';
 import { demoJugadores, demoRanking } from '../lib/demoData';
+import LogroModal from '../components/LogroModal.jsx';
 
 // Perfil público de otro jugador (solo lectura), accesible desde el chat o el ranking.
 export default function PlayerProfile() {
@@ -13,6 +14,7 @@ export default function PlayerProfile() {
   const navigate = useNavigate();
   const [jugador, setJugador] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [logroSeleccionado, setLogroSeleccionado] = useState(null);
 
   useEffect(() => {
     cargar();
@@ -87,11 +89,17 @@ export default function PlayerProfile() {
       <h3 style={{ fontSize: 16, marginBottom: 10 }}>Logros</h3>
       <div className="chip-row">
         {LOGROS_DEF.map((l) => (
-          <span key={l.id} className={`badge ${idsConseguidos.includes(l.id) ? '' : 'locked'}`} title={l.descripcion}>
+          <button key={l.id} className={`badge ${idsConseguidos.includes(l.id) ? '' : 'locked'}`} onClick={() => setLogroSeleccionado(l)}>
             {l.icono} {l.nombre}
-          </span>
+          </button>
         ))}
       </div>
+
+      <LogroModal
+        logro={logroSeleccionado}
+        conseguido={logroSeleccionado ? idsConseguidos.includes(logroSeleccionado.id) : false}
+        onClose={() => setLogroSeleccionado(null)}
+      />
     </div>
   );
 }

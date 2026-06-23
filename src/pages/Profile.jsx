@@ -6,6 +6,7 @@ import { getRango, getSiguienteRango, progresoRango } from '../lib/ranks';
 import { LOGROS_DEF, getLogrosConseguidos } from '../lib/achievements';
 import { esProvinciaCanaria, ubicacionLabel } from '../lib/provincias';
 import SelectorUbicacion from '../components/SelectorUbicacion.jsx';
+import LogroModal from '../components/LogroModal.jsx';
 import { DEMO_MODE } from '../lib/demo';
 
 const DEPORTES = ['Pádel', 'Tenis', 'Ambos'];
@@ -16,6 +17,7 @@ export default function Profile() {
   const { theme, toggleTheme } = useTheme();
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [logroSeleccionado, setLogroSeleccionado] = useState(null);
 
   const [form, setForm] = useState(() => ({ ...profile }));
 
@@ -126,11 +128,17 @@ export default function Profile() {
       <h3 style={{ fontSize: 16, marginBottom: 10 }}>Logros</h3>
       <div className="chip-row" style={{ marginBottom: 18 }}>
         {LOGROS_DEF.map((l) => (
-          <span key={l.id} className={`badge ${idsConseguidos.includes(l.id) ? '' : 'locked'}`} title={l.descripcion}>
+          <button key={l.id} className={`badge ${idsConseguidos.includes(l.id) ? '' : 'locked'}`} onClick={() => setLogroSeleccionado(l)}>
             {l.icono} {l.nombre}
-          </span>
+          </button>
         ))}
       </div>
+
+      <LogroModal
+        logro={logroSeleccionado}
+        conseguido={logroSeleccionado ? idsConseguidos.includes(logroSeleccionado.id) : false}
+        onClose={() => setLogroSeleccionado(null)}
+      />
 
       {/* DATOS DE PERFIL */}
       <div className="page-header" style={{ padding: 0, marginBottom: 10 }}>
