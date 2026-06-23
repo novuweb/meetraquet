@@ -23,14 +23,13 @@ export default function Matchmaking() {
     if (profile) cargarCandidatos();
   }, [profile?.id]);
 
-  async function cargarCandidatos() {
+  async function cargarCandidatos(soloExcluirDesafiados = false) {
     setCargando(true);
     const zona = ubicacionKey(profile.provincia, profile.isla);
 
-    const { data: vistos } = await supabase
-      .from('swipes')
-      .select('target_id')
-      .eq('swiper_id', user.id);
+    let queryVistos = supabase.from('swipes').select('target_id').eq('swiper_id', user.id);
+    if (soloExcluirDesafiados) queryVistos = queryVistos.eq('accion', 'desafiado');
+    const { data: vistos } = await queryVistos;
     const idsVistos = (vistos || []).map((v) => v.target_id);
 
     let query = supabase
@@ -79,6 +78,14 @@ export default function Matchmaking() {
     if (!error && chatId) navigate(`/chat/${chatId}`);
   }
 
+  function recargar() {
+    if (DEMO_MODE) {
+      setJugadores(demoJugadores);
+      return;
+    }
+    cargarCandidatos(true);
+  }
+
   if (cargando) return <div className="center-screen"><div className="spinner" /></div>;
 
   return (
@@ -92,7 +99,8 @@ export default function Matchmaking() {
           <div className="card" style={{ textAlign: 'center', padding: 40, marginTop: 60 }}>
             <p style={{ fontSize: 40, marginBottom: 12 }}>🎾</p>
             <p style={{ fontWeight: 700, marginBottom: 6 }}>No hay más jugadores cerca</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Vuelve más tarde o cambia tu ubicación desde el perfil.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 18 }}>Vuelve más tarde o cambia tu ubicación desde el perfil.</p>
+            <button className="btn-primary" onClick={recargar}>🔄 Recargar</button>
           </div>
         )}
 

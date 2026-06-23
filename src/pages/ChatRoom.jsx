@@ -155,18 +155,23 @@ export default function ChatRoom() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <div className="page-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, alignItems: 'center' }}>
         <button onClick={() => navigate('/mensajes')} style={{ fontSize: 20, marginRight: 6 }}>←</button>
-        <div
-          className="avatar"
-          style={{
-            width: 36, height: 36,
-            backgroundImage: otro?.avatar_url ? `url(${otro.avatar_url})` : 'none',
-            backgroundSize: 'cover', backgroundPosition: 'center',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13,
-          }}
+        <button
+          onClick={() => otro && navigate(`/jugador/${otro.id}`)}
+          style={{ display: 'flex', alignItems: 'center', flex: 1, gap: 10, textAlign: 'left' }}
         >
-          {!otro?.avatar_url && otro?.nombre?.[0]?.toUpperCase()}
-        </div>
-        <h1 style={{ fontSize: 17, flex: 1, marginLeft: 10 }}>{otro?.nombre}</h1>
+          <div
+            className="avatar"
+            style={{
+              width: 36, height: 36, flexShrink: 0,
+              backgroundImage: otro?.avatar_url ? `url(${otro.avatar_url})` : 'none',
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13,
+            }}
+          >
+            {!otro?.avatar_url && otro?.nombre?.[0]?.toUpperCase()}
+          </div>
+          <h1 style={{ fontSize: 17 }}>{otro?.nombre}</h1>
+        </button>
         <button className="chip" onClick={() => setMostrarFormResultado((v) => !v)}>🏆 Finalizar</button>
       </div>
 

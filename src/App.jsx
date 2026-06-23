@@ -10,6 +10,7 @@ import ChatRoom from './pages/ChatRoom.jsx';
 import Ranking from './pages/Ranking.jsx';
 import MapPage from './pages/MapPage.jsx';
 import Profile from './pages/Profile.jsx';
+import PlayerProfile from './pages/PlayerProfile.jsx';
 
 const RUTAS_SIN_NAV = ['/login', '/onboarding'];
 
@@ -17,7 +18,8 @@ export default function App() {
   useTheme(); // aplica data-theme guardado en localStorage al cargar
   const location = useLocation();
   const mostrarNav = !RUTAS_SIN_NAV.some((r) => location.pathname.startsWith(r))
-    && !location.pathname.startsWith('/chat/');
+    && !location.pathname.startsWith('/chat/')
+    && !location.pathname.startsWith('/jugador/');
 
   return (
     <div className="app-shell">
@@ -30,6 +32,7 @@ export default function App() {
         <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
         <Route path="/mapa" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
         <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/jugador/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
       </Routes>
       {mostrarNav && <BottomNav />}
     </div>

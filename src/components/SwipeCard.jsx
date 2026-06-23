@@ -85,7 +85,9 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
 
         <h2 style={{ fontSize: 30, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
           {jugador.nombre}, {jugador.edad}
-          <span style={{ fontSize: 16 }} title={rango.nombre}>{rango.icono}</span>
+          <span className="badge" style={{ background: 'rgba(255,255,255,.15)', borderColor: 'rgba(255,255,255,.25)', color: '#fff', fontSize: 11 }}>
+            {rango.nombre}
+          </span>
         </h2>
         <p style={{ fontSize: 14, opacity: .9, marginTop: 4 }}>
           {jugador.deporte} · {jugador.nivel} · {ubicacionLabel(jugador.provincia, jugador.isla)}

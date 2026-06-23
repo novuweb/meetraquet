@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabaseClient';
 import { getRango } from '../lib/ranks';
@@ -51,8 +52,9 @@ export default function Ranking() {
         const rango = getRango(j.puntos);
         const esYo = j.id === user.id;
         return (
-          <div
+          <Link
             key={j.id}
+            to={esYo ? '/perfil' : `/jugador/${j.id}`}
             className="card"
             style={{
               display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8,
@@ -76,10 +78,10 @@ export default function Ranking() {
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ fontWeight: esYo ? 800 : 600 }}>{j.nombre}{esYo && ' (tú)'}</p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{rango.icono} {rango.nombre}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{rango.nombre}</p>
             </div>
             <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{j.puntos} pts</span>
-          </div>
+          </Link>
         );
       })}
     </div>

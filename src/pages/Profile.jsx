@@ -100,7 +100,7 @@ export default function Profile() {
         <input id="foto-perfil" type="file" accept="image/*" onChange={handleFoto} style={{ display: 'none' }} />
         <h2 style={{ fontSize: 22 }}>{profile.nombre}, {profile.edad}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{ubicacionLabel(profile.provincia, profile.isla)}</p>
-        <p style={{ marginTop: 6, fontSize: 14 }}>{rango.icono} <strong>{rango.nombre}</strong> · {profile.puntos} pts</p>
+        <p style={{ marginTop: 6, fontSize: 14 }}><strong>{rango.nombre}</strong> · {profile.puntos} pts</p>
 
         {siguiente && (
           <div style={{ marginTop: 12 }}>
@@ -108,7 +108,7 @@ export default function Profile() {
               <div style={{ height: '100%', width: `${progreso}%`, background: 'var(--accent)' }} />
             </div>
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-              {siguiente.min - profile.puntos} pts para {siguiente.nombre} {siguiente.icono}
+              {siguiente.min - profile.puntos} pts para {siguiente.nombre}
             </p>
           </div>
         )}
