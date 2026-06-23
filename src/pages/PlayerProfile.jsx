@@ -6,6 +6,7 @@ import { LOGROS_DEF, getLogrosConseguidos } from '../lib/achievements';
 import { ubicacionLabel } from '../lib/provincias';
 import { DEMO_MODE } from '../lib/demo';
 import { demoJugadores, demoRanking } from '../lib/demoData';
+import { PERFILES_FALSOS } from '../lib/perfilesFalsos';
 import LogroModal from '../components/LogroModal.jsx';
 
 // Perfil público de otro jugador (solo lectura), accesible desde el chat o el ranking.
@@ -25,6 +26,11 @@ export default function PlayerProfile() {
     if (DEMO_MODE) {
       const encontrado = demoJugadores.find((j) => j.id === id) || demoRanking.find((j) => j.id === id);
       setJugador(encontrado || null);
+      setCargando(false);
+      return;
+    }
+    if (typeof id === 'string' && id.startsWith('fake-')) {
+      setJugador(PERFILES_FALSOS.find((f) => f.id === id) || null);
       setCargando(false);
       return;
     }

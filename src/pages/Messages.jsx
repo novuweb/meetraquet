@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabaseClient';
 import { DEMO_MODE } from '../lib/demo';
 import { demoStore, demoChatsIniciales, DEMO_USER_ID } from '../lib/demoData';
+import { listarFakeChats } from '../lib/fakeMatches';
 
 export default function Messages() {
   const { user } = useAuth();
@@ -62,8 +63,14 @@ export default function Messages() {
       })
     );
 
-    conUltimoMensaje.sort((a, b) => new Date(b.ultimo?.created_at || b.created_at) - new Date(a.ultimo?.created_at || a.created_at));
-    setChats(conUltimoMensaje);
+    const fakeChats = listarFakeChats(user.id).map((chat) => {
+      const ultimo = chat.mensajes[chat.mensajes.length - 1];
+      return { ...chat, ultimo, noLeidos: 0 };
+    });
+
+    const todos = [...conUltimoMensaje, ...fakeChats];
+    todos.sort((a, b) => new Date(b.ultimo?.created_at || b.created_at) - new Date(a.ultimo?.created_at || a.created_at));
+    setChats(todos);
     setCargando(false);
   }
 

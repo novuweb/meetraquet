@@ -6,9 +6,13 @@ import { ubicacionKey } from '../lib/provincias';
 import SwipeCard from '../components/SwipeCard.jsx';
 import { DEMO_MODE } from '../lib/demo';
 import { demoJugadores, crearChatDemo } from '../lib/demoData';
+import { PERFILES_FALSOS } from '../lib/perfilesFalsos';
+import { getFakeSwipes, setFakeSwipe, crearFakeChat, limpiarFakePasados } from '../lib/fakeMatches';
+
+const esFakeId = (id) => typeof id === 'string' && id.startsWith('fake-');
 
 export default function Matchmaking() {
-  const { profile, user } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -23,9 +27,20 @@ export default function Matchmaking() {
     if (profile) cargarCandidatos();
   }, [profile?.id]);
 
+  function candidatosFalsos(soloExcluirDesafiados = false) {
+    const zona = ubicacionKey(profile.provincia, profile.isla);
+    const swipes = getFakeSwipes(user.id);
+    return PERFILES_FALSOS.filter((f) => {
+      const mismaZona = ubicacionKey(f.provincia, f.isla) === zona;
+      if (!mismaZona) return false;
+      const accion = swipes[f.id];
+      if (soloExcluirDesafiados) return accion !== 'desafiado';
+      return !accion;
+    });
+  }
+
   async function cargarCandidatos(soloExcluirDesafiados = false) {
     setCargando(true);
-    const zona = ubicacionKey(profile.provincia, profile.isla);
 
     let queryVistos = supabase.from('swipes').select('target_id').eq('swiper_id', user.id);
     if (soloExcluirDesafiados) queryVistos = queryVistos.eq('accion', 'desafiado');
@@ -43,19 +58,20 @@ export default function Matchmaking() {
 
     const { data, error } = await query;
 
-    if (!error) {
-      const filtrados = (data || []).filter((j) => !idsVistos.includes(j.id));
-      setJugadores(filtrados);
-    }
+    const reales = error ? [] : (data || []).filter((j) => !idsVistos.includes(j.id));
+    const falsos = candidatosFalsos(soloExcluirDesafiados);
+    setJugadores([...reales, ...falsos]);
     setCargando(false);
-    // referencia para evitar warning de lint sobre var no usada
-    void zona;
   }
 
   async function pasar(jugador) {
     if (procesando) return;
     setProcesando(true);
-    if (!DEMO_MODE) {
+    if (DEMO_MODE) {
+      // no-op, ya gestionado abajo
+    } else if (esFakeId(jugador.id)) {
+      setFakeSwipe(user.id, jugador.id, 'pasado');
+    } else {
       await supabase.from('swipes').insert({ swiper_id: user.id, target_id: jugador.id, accion: 'pasado' });
     }
     setJugadores((prev) => prev.filter((j) => j.id !== jugador.id));
@@ -65,6 +81,7 @@ export default function Matchmaking() {
   async function desafiar(jugador) {
     if (procesando) return;
     setProcesando(true);
+
     if (DEMO_MODE) {
       const chat = crearChatDemo(jugador);
       setJugadores((prev) => prev.filter((j) => j.id !== jugador.id));
@@ -72,6 +89,21 @@ export default function Matchmaking() {
       navigate(`/chat/${chat.id}`);
       return;
     }
+
+    if (esFakeId(jugador.id)) {
+      const chat = crearFakeChat(user.id, jugador);
+      // El desafío se autoacepta al instante: +10 por enviarlo, +25 por ser aceptado.
+      await supabase
+        .from('profiles')
+        .update({ puntos: (profile.puntos || 0) + 35, desafios_enviados: (profile.desafios_enviados || 0) + 1 })
+        .eq('id', user.id);
+      await refreshProfile();
+      setJugadores((prev) => prev.filter((j) => j.id !== jugador.id));
+      setProcesando(false);
+      navigate(`/chat/${chat.id}`);
+      return;
+    }
+
     const { data: chatId, error } = await supabase.rpc('enviar_desafio', { p_target_id: jugador.id });
     setJugadores((prev) => prev.filter((j) => j.id !== jugador.id));
     setProcesando(false);
@@ -83,6 +115,7 @@ export default function Matchmaking() {
       setJugadores(demoJugadores);
       return;
     }
+    limpiarFakePasados(user.id);
     cargarCandidatos(true);
   }
 

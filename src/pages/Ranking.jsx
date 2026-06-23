@@ -6,6 +6,7 @@ import { getRango } from '../lib/ranks';
 import { ubicacionKey } from '../lib/provincias';
 import { DEMO_MODE } from '../lib/demo';
 import { demoRanking } from '../lib/demoData';
+import { PERFILES_FALSOS } from '../lib/perfilesFalsos';
 
 export default function Ranking() {
   const { profile, user } = useAuth();
@@ -35,7 +36,14 @@ export default function Ranking() {
     }
 
     const { data } = await query;
-    setTodos(data || []);
+
+    const falsosFiltrados = PERFILES_FALSOS.filter((f) => {
+      if (filtroZona !== 'zona') return true;
+      const zona = ubicacionKey(profile.provincia, profile.isla);
+      return ubicacionKey(f.provincia, f.isla) === zona;
+    });
+
+    setTodos([...(data || []), ...falsosFiltrados]);
     setCargando(false);
   }
 

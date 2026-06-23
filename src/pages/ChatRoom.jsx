@@ -7,11 +7,15 @@ import MatchResultMessage from '../components/MatchResultMessage.jsx';
 import ReportarResultadoForm from '../components/ReportarResultadoForm.jsx';
 import { DEMO_MODE } from '../lib/demo';
 import { demoStore, DEMO_USER_ID } from '../lib/demoData';
+import { getFakeChat, actualizarFakeChat } from '../lib/fakeMatches';
+
+const esFakeChatId = (id) => typeof id === 'string' && id.startsWith('fake-chat-');
 
 export default function ChatRoom() {
   const { chatId } = useParams();
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const esFake = !DEMO_MODE && esFakeChatId(chatId);
 
   const [chat, setChat] = useState(null);
   const [otro, setOtro] = useState(null);
@@ -29,6 +33,16 @@ export default function ChatRoom() {
         setChat(chatDemo);
         setOtro(chatDemo.otro);
         setMensajes(chatDemo.mensajes);
+      }
+      setCargando(false);
+      return;
+    }
+    if (esFake) {
+      const fakeChat = getFakeChat(user.id, chatId);
+      if (fakeChat) {
+        setChat(fakeChat);
+        setOtro(fakeChat.otro);
+        setMensajes(fakeChat.mensajes);
       }
       setCargando(false);
       return;
@@ -104,6 +118,13 @@ export default function ChatRoom() {
       return;
     }
 
+    if (esFake) {
+      const nuevo = { id: `m-${Date.now()}`, remitente_id: user.id, contenido, tipo: 'texto', created_at: new Date().toISOString() };
+      actualizarFakeChat(user.id, chatId, (c) => ({ ...c, mensajes: [...c.mensajes, nuevo] }));
+      setMensajes((prev) => [...prev, nuevo]);
+      return;
+    }
+
     await supabase.from('messages').insert({ chat_id: chatId, remitente_id: user.id, contenido, tipo: 'texto' });
   }
 
@@ -143,6 +164,39 @@ export default function ChatRoom() {
       const nuevo = { id: `m-${Date.now()}`, remitente_id: user.id, contenido: `🏆 Resultado reportado: ${resultado}`, tipo: 'partido', partido_id: partidoId, created_at: new Date().toISOString() };
       setPartidos((prev) => ({ ...prev, [partidoId]: partido }));
       setMensajes((prev) => [...prev, nuevo]);
+      return;
+    }
+
+    if (esFake) {
+      // El rival falso no puede confirmar de verdad: se autoconfirma al instante
+      // y se aplican los puntos reales (+200 victoria / -100 derrota) al usuario.
+      const ganadorId = quienGano === 'yo' ? user.id : otro.id;
+      const partidoId = `partido-${Date.now()}`;
+      const ahora = new Date().toISOString();
+      const partido = { id: partidoId, ganador_id: ganadorId, perdedor_id: perdedorId, resultado, estado: 'confirmado', reportado_por: user.id };
+      const mensajeResultado = { id: `m-${Date.now()}`, remitente_id: user.id, contenido: `🏆 Resultado reportado: ${resultado}`, tipo: 'partido', partido_id: partidoId, created_at: ahora };
+      const mensajeSistema = { id: `m-${Date.now() + 1}`, remitente_id: otro.id, contenido: '✅ Resultado confirmado. ¡Puntos sumados!', tipo: 'sistema', created_at: ahora };
+
+      actualizarFakeChat(user.id, chatId, (c) => ({ ...c, mensajes: [...c.mensajes, mensajeResultado, mensajeSistema] }));
+      setPartidos((prev) => ({ ...prev, [partidoId]: partido }));
+      setMensajes((prev) => [...prev, mensajeResultado, mensajeSistema]);
+
+      const gane = quienGano === 'yo';
+      const racha = gane ? (profile.racha_actual || 0) + 1 : 0;
+      const bonusRacha = gane && racha === 3 ? 75 : 0;
+      const puntos = gane
+        ? (profile.puntos || 0) + 200 + bonusRacha
+        : Math.max((profile.puntos || 0) - 100, 0);
+
+      await supabase.from('profiles').update({
+        puntos,
+        partidos_jugados: (profile.partidos_jugados || 0) + 1,
+        victorias: (profile.victorias || 0) + (gane ? 1 : 0),
+        derrotas: (profile.derrotas || 0) + (gane ? 0 : 1),
+        racha_actual: racha,
+        ultimo_partido_en: ahora,
+      }).eq('id', user.id);
+      await refreshProfile();
       return;
     }
 
