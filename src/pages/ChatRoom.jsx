@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabaseClient';
 import ChallengeMessage from '../components/ChallengeMessage.jsx';
+import MatchResultMessage from '../components/MatchResultMessage.jsx';
+import ReportarResultadoForm from '../components/ReportarResultadoForm.jsx';
 import { DEMO_MODE } from '../lib/demo';
 import { demoStore, DEMO_USER_ID } from '../lib/demoData';
 
@@ -14,8 +16,10 @@ export default function ChatRoom() {
   const [chat, setChat] = useState(null);
   const [otro, setOtro] = useState(null);
   const [mensajes, setMensajes] = useState([]);
+  const [partidos, setPartidos] = useState({}); // { [partidoId]: partidoRow }
   const [texto, setTexto] = useState('');
   const [cargando, setCargando] = useState(true);
+  const [mostrarFormResultado, setMostrarFormResultado] = useState(false);
   const finRef = useRef(null);
 
   useEffect(() => {
@@ -32,11 +36,17 @@ export default function ChatRoom() {
     cargarTodo();
     const canal = supabase
       .channel(`chat-${chatId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, async (payload) => {
         setMensajes((prev) => [...prev, payload.new]);
+        if (payload.new.tipo === 'partido' && payload.new.partido_id) {
+          await cargarPartido(payload.new.partido_id);
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chats', filter: `id=eq.${chatId}` }, (payload) => {
         setChat(payload.new);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'partidos', filter: `chat_id=eq.${chatId}` }, (payload) => {
+        setPartidos((prev) => ({ ...prev, [payload.new.id]: payload.new }));
       })
       .subscribe();
     return () => supabase.removeChannel(canal);
@@ -45,6 +55,11 @@ export default function ChatRoom() {
   useEffect(() => {
     finRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes.length]);
+
+  async function cargarPartido(partidoId) {
+    const { data } = await supabase.from('partidos').select('*').eq('id', partidoId).single();
+    if (data) setPartidos((prev) => ({ ...prev, [data.id]: data }));
+  }
 
   async function cargarTodo() {
     const { data: chatData } = await supabase.from('chats').select('*').eq('id', chatId).single();
@@ -62,6 +77,14 @@ export default function ChatRoom() {
       .eq('chat_id', chatId)
       .order('created_at', { ascending: true });
     setMensajes(msgs || []);
+
+    const partidoIds = (msgs || []).filter((m) => m.tipo === 'partido' && m.partido_id).map((m) => m.partido_id);
+    if (partidoIds.length > 0) {
+      const { data: partidosData } = await supabase.from('partidos').select('*').in('id', partidoIds);
+      const dict = {};
+      (partidosData || []).forEach((p) => { dict[p.id] = p; });
+      setPartidos(dict);
+    }
 
     await supabase.from('messages').update({ leido: true }).eq('chat_id', chatId).neq('remitente_id', user.id);
     setCargando(false);
@@ -104,6 +127,28 @@ export default function ChatRoom() {
     }
   }
 
+  function onResultadoResuelto(partidoId, estado) {
+    setPartidos((prev) => ({ ...prev, [partidoId]: { ...prev[partidoId], estado } }));
+  }
+
+  async function reportarResultado(quienGano, resultado) {
+    setMostrarFormResultado(false);
+    if (!otro) return;
+    const perdedorId = quienGano === 'yo' ? otro.id : user.id;
+
+    if (DEMO_MODE) {
+      const ganadorId = quienGano === 'yo' ? user.id : otro.id;
+      const partidoId = `partido-${Date.now()}`;
+      const partido = { id: partidoId, ganador_id: ganadorId, perdedor_id: perdedorId, resultado, estado: 'pendiente', reportado_por: user.id };
+      const nuevo = { id: `m-${Date.now()}`, remitente_id: user.id, contenido: `🏆 Resultado reportado: ${resultado}`, tipo: 'partido', partido_id: partidoId, created_at: new Date().toISOString() };
+      setPartidos((prev) => ({ ...prev, [partidoId]: partido }));
+      setMensajes((prev) => [...prev, nuevo]);
+      return;
+    }
+
+    await supabase.rpc('reportar_resultado', { p_chat_id: chatId, p_perdedor_id: perdedorId, p_resultado: resultado });
+  }
+
   if (cargando) return <div className="center-screen"><div className="spinner" /></div>;
 
   return (
@@ -122,9 +167,18 @@ export default function ChatRoom() {
           {!otro?.avatar_url && otro?.nombre?.[0]?.toUpperCase()}
         </div>
         <h1 style={{ fontSize: 17, flex: 1, marginLeft: 10 }}>{otro?.nombre}</h1>
+        <button className="chip" onClick={() => setMostrarFormResultado((v) => !v)}>🏆 Finalizar</button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
+        {mostrarFormResultado && (
+          <ReportarResultadoForm
+            otro={otro}
+            onCancelar={() => setMostrarFormResultado(false)}
+            onConfirmar={reportarResultado}
+          />
+        )}
+
         {mensajes.map((m) => {
           if (m.tipo === 'desafio') {
             return (
@@ -134,6 +188,17 @@ export default function ChatRoom() {
                 mensaje={m}
                 esMio={m.remitente_id === user.id}
                 onResuelto={onDesafioResuelto}
+              />
+            );
+          }
+          if (m.tipo === 'partido') {
+            return (
+              <MatchResultMessage
+                key={m.id}
+                mensaje={m}
+                partido={partidos[m.partido_id]}
+                esMio={m.remitente_id === user.id}
+                onResuelto={(estado) => onResultadoResuelto(m.partido_id, estado)}
               />
             );
           }

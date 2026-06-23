@@ -81,7 +81,8 @@ create table if not exists public.messages (
   chat_id uuid not null references public.chats(id) on delete cascade,
   remitente_id uuid not null references public.profiles(id) on delete cascade,
   contenido text not null,
-  tipo text not null default 'texto' check (tipo in ('texto', 'desafio', 'sistema')),
+  tipo text not null default 'texto' check (tipo in ('texto', 'desafio', 'sistema', 'partido')),
+  partido_id uuid,
   leido boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -98,10 +99,15 @@ create table if not exists public.partidos (
   reportado_por uuid not null references public.profiles(id) on delete cascade,
   ganador_id uuid not null references public.profiles(id) on delete cascade,
   perdedor_id uuid not null references public.profiles(id) on delete cascade,
+  resultado text not null,
+  estado text not null default 'pendiente' check (estado in ('pendiente', 'confirmado', 'rechazado')),
   confirmado boolean not null default false,
   confirmado_en timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.messages
+  add constraint messages_partido_id_fkey foreign key (partido_id) references public.partidos(id) on delete set null;
 
 -- ============================================================
 -- ROW LEVEL SECURITY
@@ -345,44 +351,76 @@ $$ language plpgsql security definer;
 
 -- ============================================================
 -- FUNCIÓN RPC: reportar_resultado
--- Quien gana reporta; el rival debe confirmar para que cuenten los puntos.
+-- Cualquiera de los dos jugadores del chat reporta el resultado
+-- (ej. "6-0 6-0") indicando quién perdió. El rival debe confirmar
+-- para que se sumen los puntos correspondientes.
 -- ============================================================
-create or replace function public.reportar_resultado(p_chat_id uuid, p_perdedor_id uuid)
+create or replace function public.reportar_resultado(p_chat_id uuid, p_perdedor_id uuid, p_resultado text)
 returns uuid as $$
 declare
   v_partido_id uuid;
+  v_otro uuid;
 begin
-  insert into public.partidos (chat_id, reportado_por, ganador_id, perdedor_id)
-  values (p_chat_id, auth.uid(), auth.uid(), p_perdedor_id)
+  select case when usuario_a = auth.uid() then usuario_b else usuario_a end into v_otro
+  from public.chats where id = p_chat_id and (usuario_a = auth.uid() or usuario_b = auth.uid());
+
+  if v_otro is null then
+    raise exception 'No participas en este chat';
+  end if;
+
+  if p_perdedor_id <> auth.uid() and p_perdedor_id <> v_otro then
+    raise exception 'El perdedor debe ser uno de los dos jugadores del chat';
+  end if;
+
+  insert into public.partidos (chat_id, reportado_por, ganador_id, perdedor_id, resultado)
+  values (
+    p_chat_id, auth.uid(),
+    case when p_perdedor_id = auth.uid() then v_otro else auth.uid() end,
+    p_perdedor_id,
+    p_resultado
+  )
   returning id into v_partido_id;
 
-  insert into public.messages (chat_id, remitente_id, contenido, tipo)
-  values (p_chat_id, auth.uid(), '🏆 Resultado reportado, pendiente de confirmación del rival.', 'sistema');
+  insert into public.messages (chat_id, remitente_id, contenido, tipo, partido_id)
+  values (p_chat_id, auth.uid(), '🏆 Resultado reportado: ' || p_resultado, 'partido', v_partido_id);
 
   return v_partido_id;
 end;
 $$ language plpgsql security definer;
 
+-- ============================================================
+-- FUNCIÓN RPC: confirmar_resultado
+-- Solo el rival (no quien reportó) puede confirmar. Al confirmar
+-- se suman los puntos: +50 al ganador, bonus +75 si llega a 3
+-- victorias seguidas, y se actualizan stats de ambos.
+-- ============================================================
 create or replace function public.confirmar_resultado(p_partido_id uuid)
 returns void as $$
 declare
   v_ganador uuid;
   v_perdedor uuid;
+  v_reportado_por uuid;
+  v_chat_id uuid;
   v_racha int;
 begin
-  select ganador_id, perdedor_id into v_ganador, v_perdedor
-  from public.partidos where id = p_partido_id and confirmado = false;
+  select ganador_id, perdedor_id, reportado_por, chat_id
+  into v_ganador, v_perdedor, v_reportado_por, v_chat_id
+  from public.partidos where id = p_partido_id and estado = 'pendiente';
 
   if v_ganador is null then
-    raise exception 'Partido no encontrado o ya confirmado';
+    raise exception 'Partido no encontrado o ya resuelto';
   end if;
 
-  if auth.uid() <> v_perdedor then
-    raise exception 'Solo el rival puede confirmar el resultado';
+  if auth.uid() = v_reportado_por then
+    raise exception 'No puedes confirmar tu propio reporte, debe hacerlo el rival';
+  end if;
+
+  if auth.uid() <> v_ganador and auth.uid() <> v_perdedor then
+    raise exception 'No participas en este partido';
   end if;
 
   update public.partidos
-  set confirmado = true, confirmado_en = now()
+  set estado = 'confirmado', confirmado = true, confirmado_en = now()
   where id = p_partido_id;
 
   update public.profiles
@@ -404,6 +442,44 @@ begin
       racha_actual = 0,
       ultimo_partido_en = now()
   where id = v_perdedor;
+
+  insert into public.messages (chat_id, remitente_id, contenido, tipo)
+  values (v_chat_id, auth.uid(), '✅ Resultado confirmado. ¡Puntos sumados!', 'sistema');
+end;
+$$ language plpgsql security definer;
+
+-- ============================================================
+-- FUNCIÓN RPC: rechazar_resultado
+-- El rival rechaza el resultado reportado: no se suman puntos.
+-- ============================================================
+create or replace function public.rechazar_resultado(p_partido_id uuid)
+returns void as $$
+declare
+  v_reportado_por uuid;
+  v_chat_id uuid;
+  v_ganador uuid;
+  v_perdedor uuid;
+begin
+  select reportado_por, chat_id, ganador_id, perdedor_id
+  into v_reportado_por, v_chat_id, v_ganador, v_perdedor
+  from public.partidos where id = p_partido_id and estado = 'pendiente';
+
+  if v_reportado_por is null then
+    raise exception 'Partido no encontrado o ya resuelto';
+  end if;
+
+  if auth.uid() = v_reportado_por then
+    raise exception 'No puedes rechazar tu propio reporte';
+  end if;
+
+  if auth.uid() <> v_ganador and auth.uid() <> v_perdedor then
+    raise exception 'No participas en este partido';
+  end if;
+
+  update public.partidos set estado = 'rechazado' where id = p_partido_id;
+
+  insert into public.messages (chat_id, remitente_id, contenido, tipo)
+  values (v_chat_id, auth.uid(), '❌ Resultado rechazado, no se han sumado puntos.', 'sistema');
 end;
 $$ language plpgsql security definer;
 
