@@ -20,7 +20,7 @@ const RUTAS_SIN_NAV = ['/login', '/onboarding'];
 export default function App() {
   useTheme(); // aplica data-theme guardado en localStorage al cargar
   const location = useLocation();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [tutorialVisible, setTutorialVisible] = useState(false);
 
   const mostrarNav = !RUTAS_SIN_NAV.some((r) => location.pathname.startsWith(r))
@@ -28,10 +28,10 @@ export default function App() {
     && !location.pathname.startsWith('/jugador/');
 
   useEffect(() => {
-    if (profile?.perfil_completo && location.pathname === '/' && !tutorialYaVisto()) {
+    if (profile?.perfil_completo && user?.id && !tutorialYaVisto(user.id)) {
       setTutorialVisible(true);
     }
-  }, [profile?.perfil_completo, location.pathname]);
+  }, [profile?.perfil_completo, user?.id]);
 
   return (
     <div className="app-shell">
@@ -49,7 +49,7 @@ export default function App() {
         </Routes>
       </div>
       {mostrarNav && <BottomNav />}
-      {tutorialVisible && <Tutorial onFinish={() => setTutorialVisible(false)} />}
+      {tutorialVisible && <Tutorial uid={user?.id} onFinish={() => setTutorialVisible(false)} />}
     </div>
   );
 }

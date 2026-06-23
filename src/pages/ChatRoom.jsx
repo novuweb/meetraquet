@@ -51,7 +51,7 @@ export default function ChatRoom() {
     const canal = supabase
       .channel(`chat-${chatId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, async (payload) => {
-        setMensajes((prev) => [...prev, payload.new]);
+        setMensajes((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]));
         if (payload.new.tipo === 'partido' && payload.new.partido_id) {
           await cargarPartido(payload.new.partido_id);
         }
@@ -125,7 +125,14 @@ export default function ChatRoom() {
       return;
     }
 
-    await supabase.from('messages').insert({ chat_id: chatId, remitente_id: user.id, contenido, tipo: 'texto' });
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({ chat_id: chatId, remitente_id: user.id, contenido, tipo: 'texto' })
+      .select()
+      .single();
+    if (!error && data) {
+      setMensajes((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
+    }
   }
 
   function onDesafioResuelto(accion) {

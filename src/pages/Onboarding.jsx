@@ -65,7 +65,7 @@ export default function Onboarding() {
           isla: esProvinciaCanaria(provincia) ? isla : null,
           avatar_url,
           perfil_completo: true,
-          puntos: (profile?.puntos || 0) + (profile?.perfil_completo ? 0 : 100),
+          puntos: profile?.puntos || 0,
         })
         .eq('id', user.id);
 
