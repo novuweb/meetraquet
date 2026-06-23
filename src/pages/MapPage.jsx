@@ -4,6 +4,14 @@ import L from 'leaflet';
 
 const CENTRO_ESPANA = [40.4168, -3.7038];
 
+// Varios espejos públicos de Overpass: si el primero falla o está saturado,
+// se prueba con el siguiente automáticamente.
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter',
+];
+
 const icono = (emoji) => L.divIcon({
   html: `<div style="font-size:26px;line-height:1;">${emoji}</div>`,
   className: '',
@@ -17,11 +25,31 @@ function Recentrar({ centro }) {
   return null;
 }
 
+async function consultarOverpass(query) {
+  let ultimoError = null;
+  for (const url of OVERPASS_MIRRORS) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      ultimoError = err;
+    }
+  }
+  throw ultimoError || new Error('No se pudo contactar con ningún servidor de Overpass');
+}
+
 export default function MapPage() {
   const [centro, setCentro] = useState(CENTRO_ESPANA);
   const [pistas, setPistas] = useState([]);
   const [filtro, setFiltro] = useState('ambos'); // 'padel' | 'tenis' | 'ambos'
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
@@ -36,21 +64,19 @@ export default function MapPage() {
 
   async function cargarPistas([lat, lon]) {
     setCargando(true);
+    setError(null);
     const radio = 20000; // 20km
     const query = `
       [out:json][timeout:25];
       (
-        nwr["sport"~"tennis|padel"](around:${radio},${lat},${lon});
-        nwr["leisure"="sports_centre"]["sport"~"tennis|padel"](around:${radio},${lat},${lon});
+        node["sport"~"tennis|padel"](around:${radio},${lat},${lon});
+        way["sport"~"tennis|padel"](around:${radio},${lat},${lon});
+        relation["sport"~"tennis|padel"](around:${radio},${lat},${lon});
       );
-      out center 80;
+      out center 100;
     `;
     try {
-      const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: query,
-      });
-      const data = await res.json();
+      const data = await consultarOverpass(query);
       const procesadas = (data.elements || [])
         .map((el) => {
           const latlng = el.type === 'node' ? [el.lat, el.lon] : [el.center?.lat, el.center?.lon];
@@ -70,8 +96,9 @@ export default function MapPage() {
         })
         .filter(Boolean);
       setPistas(procesadas);
-    } catch {
+    } catch (err) {
       setPistas([]);
+      setError('No se han podido cargar las pistas. Comprueba tu conexión e inténtalo de nuevo.');
     }
     setCargando(false);
   }
@@ -92,6 +119,19 @@ export default function MapPage() {
           <button className={`chip ${filtro === 'padel' ? 'selected' : ''}`} onClick={() => setFiltro('padel')}>Pádel</button>
           <button className={`chip ${filtro === 'tenis' ? 'selected' : ''}`} onClick={() => setFiltro('tenis')}>Tenis</button>
         </div>
+
+        {error && (
+          <div className="card" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{error}</p>
+            <button className="chip" onClick={() => cargarPistas(centro)}>Reintentar</button>
+          </div>
+        )}
+
+        {!error && !cargando && pistasFiltradas.length === 0 && (
+          <div className="card" style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No se han encontrado pistas registradas en OpenStreetMap cerca de tu ubicación. Puede que falten por mapear en tu zona.</p>
+          </div>
+        )}
       </div>
 
       <div style={{ height: '60vh', width: '100%', position: 'relative' }}>

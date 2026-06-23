@@ -3,8 +3,8 @@ import { NavLink } from 'react-router-dom';
 // Iconos en línea (SVG), sin emojis, para un acabado más serio/premium.
 const IconMatch = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 3c2.5 2.5 2.5 15.5 0 18M3 12h18" />
+    <circle cx="8" cy="8" r="5" />
+    <circle cx="16" cy="16" r="5" />
   </svg>
 );
 const IconMessages = () => (
@@ -31,7 +31,7 @@ const IconProfile = () => (
 );
 
 const ITEMS = [
-  { to: '/', label: 'Match', Icon: IconMatch },
+  { to: '/', label: 'Partidos', Icon: IconMatch },
   { to: '/mensajes', label: 'Mensajes', Icon: IconMessages },
   { to: '/ranking', label: 'Ranking', Icon: IconRanking },
   { to: '/mapa', label: 'Mapa', Icon: IconMap },
