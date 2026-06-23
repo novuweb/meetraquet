@@ -89,7 +89,7 @@ export default function Matchmaking() {
   if (cargando) return <div className="center-screen"><div className="spinner" /></div>;
 
   return (
-    <div className="page" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 78px)' }}>
+    <div className="page" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header" style={{ padding: 0, marginBottom: 16 }}>
         <h1>Encuentra tu rival</h1>
       </div>

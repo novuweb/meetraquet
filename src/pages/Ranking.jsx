@@ -9,31 +9,40 @@ import { demoRanking } from '../lib/demoData';
 
 export default function Ranking() {
   const { profile, user } = useAuth();
-  const [filtro, setFiltro] = useState('global'); // 'global' | 'zona'
-  const [lista, setLista] = useState([]);
+  const [filtroZona, setFiltroZona] = useState('global'); // 'global' | 'zona'
+  const [filtroDeporte, setFiltroDeporte] = useState('todos'); // 'todos' | 'Pádel' | 'Tenis'
+  const [todos, setTodos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     cargar();
-  }, [filtro]);
+  }, [filtroZona]);
 
   async function cargar() {
     setCargando(true);
     if (DEMO_MODE) {
-      setLista(demoRanking);
+      setTodos(demoRanking);
       setCargando(false);
       return;
     }
-    if (filtro === 'global') {
-      const { data } = await supabase.from('ranking_global').select('*').order('posicion', { ascending: true });
-      setLista(data || []);
-    } else {
+
+    let query = supabase.from('profiles').select('id, nombre, avatar_url, provincia, isla, puntos, deporte').eq('perfil_completo', true);
+
+    if (filtroZona === 'zona') {
       const zona = ubicacionKey(profile.provincia, profile.isla);
-      const { data } = await supabase.from('ranking_zona').select('*').eq('zona', zona).order('posicion_zona', { ascending: true });
-      setLista((data || []).map((d) => ({ ...d, posicion: d.posicion_zona })));
+      if (profile.isla) query = query.eq('isla', zona);
+      else query = query.eq('provincia', zona).is('isla', null);
     }
+
+    const { data } = await query;
+    setTodos(data || []);
     setCargando(false);
   }
+
+  const lista = todos
+    .filter((j) => filtroDeporte === 'todos' || j.deporte === filtroDeporte || j.deporte === 'Ambos')
+    .sort((a, b) => b.puntos - a.puntos)
+    .map((j, i) => ({ ...j, posicion: i + 1 }));
 
   if (cargando) return <div className="center-screen"><div className="spinner" /></div>;
 
@@ -41,11 +50,17 @@ export default function Ranking() {
     <div className="page">
       <h1 className="page-title">Ranking</h1>
 
-      <div className="chip-row" style={{ marginBottom: 18 }}>
-        <button className={`chip ${filtro === 'global' ? 'selected' : ''}`} onClick={() => setFiltro('global')}>Global</button>
-        <button className={`chip ${filtro === 'zona' ? 'selected' : ''}`} onClick={() => setFiltro('zona')}>
+      <div className="chip-row" style={{ marginBottom: 12 }}>
+        <button className={`chip ${filtroZona === 'global' ? 'selected' : ''}`} onClick={() => setFiltroZona('global')}>Global</button>
+        <button className={`chip ${filtroZona === 'zona' ? 'selected' : ''}`} onClick={() => setFiltroZona('zona')}>
           Mi zona ({ubicacionKey(profile.provincia, profile.isla)})
         </button>
+      </div>
+
+      <div className="chip-row" style={{ marginBottom: 18 }}>
+        <button className={`chip ${filtroDeporte === 'todos' ? 'selected' : ''}`} onClick={() => setFiltroDeporte('todos')}>Todos</button>
+        <button className={`chip ${filtroDeporte === 'Pádel' ? 'selected' : ''}`} onClick={() => setFiltroDeporte('Pádel')}>Pádel</button>
+        <button className={`chip ${filtroDeporte === 'Tenis' ? 'selected' : ''}`} onClick={() => setFiltroDeporte('Tenis')}>Tenis</button>
       </div>
 
       {lista.map((j) => {
@@ -84,6 +99,12 @@ export default function Ranking() {
           </Link>
         );
       })}
+
+      {lista.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', padding: 30 }}>
+          <p style={{ color: 'var(--text-muted)' }}>No hay jugadores en esta categoría todavía.</p>
+        </div>
+      )}
     </div>
   );
 }

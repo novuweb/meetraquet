@@ -23,17 +23,19 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/onboarding" element={<ProtectedRoute requireCompleteProfile={false}><Onboarding /></ProtectedRoute>} />
-        <Route path="/" element={<ProtectedRoute><Matchmaking /></ProtectedRoute>} />
-        <Route path="/mensajes" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-        <Route path="/chat/:chatId" element={<ProtectedRoute><ChatRoom /></ProtectedRoute>} />
-        <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
-        <Route path="/mapa" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
-        <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/jugador/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
-      </Routes>
+      <div className="scroll-area">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/onboarding" element={<ProtectedRoute requireCompleteProfile={false}><Onboarding /></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute><Matchmaking /></ProtectedRoute>} />
+          <Route path="/mensajes" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+          <Route path="/chat/:chatId" element={<ProtectedRoute><ChatRoom /></ProtectedRoute>} />
+          <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
+          <Route path="/mapa" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
+          <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/jugador/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
+        </Routes>
+      </div>
       {mostrarNav && <BottomNav />}
     </div>
   );

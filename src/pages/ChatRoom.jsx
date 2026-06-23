@@ -152,7 +152,7 @@ export default function ChatRoom() {
   if (cargando) return <div className="center-screen"><div className="spinner" /></div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, alignItems: 'center' }}>
         <button onClick={() => navigate('/mensajes')} style={{ fontSize: 20, marginRight: 6 }}>←</button>
         <button
