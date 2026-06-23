@@ -73,7 +73,7 @@ export default function Matchmaking() {
       navigate(`/chat/${chat.id}`);
       return;
     }
-    const { data: chatId, error } = await supabase.rpc('enviar_desafio', { target_id: jugador.id });
+    const { data: chatId, error } = await supabase.rpc('enviar_desafio', { p_target_id: jugador.id });
     setJugadores((prev) => prev.filter((j) => j.id !== jugador.id));
     setProcesando(false);
     if (!error && chatId) navigate(`/chat/${chatId}`);

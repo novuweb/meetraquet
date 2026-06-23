@@ -269,22 +269,22 @@ create trigger trg_on_auth_user_created
 -- Crea (o reutiliza) un chat entre dos usuarios, inserta el mensaje
 -- de desafío y otorga los +10 pts por enviar el desafío.
 -- ============================================================
-create or replace function public.enviar_desafio(target_id uuid)
+create or replace function public.enviar_desafio(p_target_id uuid)
 returns uuid as $$
 declare
   v_chat_id uuid;
   v_a uuid;
   v_b uuid;
 begin
-  if target_id = auth.uid() then
+  if p_target_id = auth.uid() then
     raise exception 'No puedes desafiarte a ti mismo';
   end if;
 
   -- orden determinista para evitar duplicados (a,b) vs (b,a)
-  if auth.uid() < target_id then
-    v_a := auth.uid(); v_b := target_id;
+  if auth.uid() < p_target_id then
+    v_a := auth.uid(); v_b := p_target_id;
   else
-    v_a := target_id; v_b := auth.uid();
+    v_a := p_target_id; v_b := auth.uid();
   end if;
 
   insert into public.chats (usuario_a, usuario_b, estado_desafio, desafio_iniciado_por)
@@ -296,7 +296,7 @@ begin
   values (v_chat_id, auth.uid(), '¡Hola! Te desafío a un partido. ¿Aceptas el reto?', 'desafio');
 
   insert into public.swipes (swiper_id, target_id, accion)
-  values (auth.uid(), target_id, 'desafiado')
+  values (auth.uid(), p_target_id, 'desafiado')
   on conflict (swiper_id, target_id) do update set accion = 'desafiado';
 
   update public.profiles
