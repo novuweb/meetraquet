@@ -259,7 +259,7 @@ create or replace function public.handle_new_user()
 returns trigger as $$
 begin
   insert into public.profiles (id, nombre, edad, deporte, nivel, provincia, puntos)
-  values (new.id, coalesce(new.raw_user_meta_data->>'nombre', 'Jugador/a'), 18, 'Pádel', 'Principiante', 'Madrid', 50)
+  values (new.id, coalesce(new.raw_user_meta_data->>'nombre', 'Jugador/a'), 18, 'Pádel', 'Principiante', 'Madrid', 0)
   on conflict (id) do nothing;
   return new;
 end;
@@ -427,7 +427,7 @@ begin
   set partidos_jugados = partidos_jugados + 1,
       victorias = victorias + 1,
       racha_actual = racha_actual + 1,
-      puntos = puntos + 50,
+      puntos = puntos + 200,
       ultimo_partido_en = now()
   where id = v_ganador
   returning racha_actual into v_racha;
@@ -440,6 +440,7 @@ begin
   set partidos_jugados = partidos_jugados + 1,
       derrotas = derrotas + 1,
       racha_actual = 0,
+      puntos = greatest(puntos - 100, 0),
       ultimo_partido_en = now()
   where id = v_perdedor;
 

@@ -29,12 +29,15 @@ export function progresoRango(puntos = 0) {
 }
 
 // Puntos otorgados por cada acción (ver spec del producto)
+// Nota: la lógica real vive en las funciones RPC de Supabase (schema.sql);
+// esto es solo referencia/documentación para el frontend.
 export const PUNTOS = {
-  REGISTRO: 50,
+  REGISTRO: 0,
   PERFIL_COMPLETO: 100,
   ENVIAR_DESAFIO: 10,
   DESAFIO_ACEPTADO: 25,
-  PARTIDO_GANADO: 50,
+  PARTIDO_GANADO: 200,
+  PARTIDO_PERDIDO: -100,
   RACHA_3_VICTORIAS: 75,
   SEMANA_ACTIVA: 30,
 };
