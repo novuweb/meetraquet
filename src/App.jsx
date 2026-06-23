@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useTheme } from './hooks/useTheme';
+import { useAuth } from './hooks/useAuth.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import BottomNav from './components/BottomNav.jsx';
+import Tutorial, { tutorialYaVisto } from './components/Tutorial.jsx';
 import Login from './pages/Login.jsx';
 import Onboarding from './pages/Onboarding.jsx';
 import Matchmaking from './pages/Matchmaking.jsx';
@@ -17,9 +20,18 @@ const RUTAS_SIN_NAV = ['/login', '/onboarding'];
 export default function App() {
   useTheme(); // aplica data-theme guardado en localStorage al cargar
   const location = useLocation();
+  const { profile } = useAuth();
+  const [tutorialVisible, setTutorialVisible] = useState(false);
+
   const mostrarNav = !RUTAS_SIN_NAV.some((r) => location.pathname.startsWith(r))
     && !location.pathname.startsWith('/chat/')
     && !location.pathname.startsWith('/jugador/');
+
+  useEffect(() => {
+    if (profile?.perfil_completo && location.pathname === '/' && !tutorialYaVisto()) {
+      setTutorialVisible(true);
+    }
+  }, [profile?.perfil_completo, location.pathname]);
 
   return (
     <div className="app-shell">
@@ -37,6 +49,7 @@ export default function App() {
         </Routes>
       </div>
       {mostrarNav && <BottomNav />}
+      {tutorialVisible && <Tutorial onFinish={() => setTutorialVisible(false)} />}
     </div>
   );
 }

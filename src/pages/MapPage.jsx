@@ -3,6 +3,13 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 const CENTRO_ESPANA = [40.4168, -3.7038];
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+const TILE_URL = MAPBOX_TOKEN
+  ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`
+  : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_ATTRIBUTION = MAPBOX_TOKEN
+  ? '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; OpenStreetMap contributors'
+  : '&copy; OpenStreetMap contributors';
 
 // Varios espejos públicos de Overpass: si el primero falla o está saturado,
 // se prueba con el siguiente automáticamente.
@@ -139,8 +146,10 @@ export default function MapPage() {
         <MapContainer center={centro} zoom={13} style={{ height: '100%', width: '100%' }}>
           <Recentrar centro={centro} />
           <TileLayer
-            attribution='&copy; OpenStreetMap contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution={TILE_ATTRIBUTION}
+            url={TILE_URL}
+            tileSize={MAPBOX_TOKEN ? 512 : 256}
+            zoomOffset={MAPBOX_TOKEN ? -1 : 0}
           />
           <Marker position={centro} icon={icono('📍')}>
             <Popup>Tu ubicación</Popup>
