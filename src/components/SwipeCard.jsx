@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { getRango } from '../lib/ranks';
 import { getLogrosDestacados } from '../lib/achievements';
 import { ubicacionLabel } from '../lib/provincias';
+import { iconoDisponibilidad } from '../lib/disponibilidad';
 
 // Carta estilo Tinder con soporte de gestos táctiles (swipe) y botones.
 export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
@@ -92,6 +93,11 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
         <p style={{ fontSize: 14, opacity: .9, marginTop: 4 }}>
           {jugador.deporte} · {jugador.nivel} · {ubicacionLabel(jugador.provincia, jugador.isla)}
         </p>
+        {jugador.disponibilidad?.length > 0 && (
+          <p style={{ fontSize: 18, marginTop: 8 }}>
+            {jugador.disponibilidad.map((d) => iconoDisponibilidad(d)).join(' ')}
+          </p>
+        )}
         {jugador.descripcion && (
           <p style={{ fontSize: 14, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>{jugador.descripcion}</p>
         )}

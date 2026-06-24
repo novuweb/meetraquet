@@ -92,6 +92,13 @@ export default function PlayerProfile() {
         <Stat label="Racha" value={jugador.racha_actual || 0} />
       </div>
 
+      {(jugador.valoraciones_recibidas || 0) > 0 && (
+        <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', textAlign: 'center', marginBottom: 18 }}>
+          <Stat label="⭐ Deportividad" value={jugador.deportividad_media} />
+          <Stat label="⏱️ Puntualidad" value={jugador.puntualidad_media} />
+        </div>
+      )}
+
       <h3 style={{ fontSize: 16, marginBottom: 10 }}>Logros</h3>
       <div className="chip-row">
         {LOGROS_DEF.map((l) => (

@@ -514,3 +514,10 @@ select
   coalesce(isla, provincia) as zona,
   row_number() over (partition by coalesce(isla, provincia) order by puntos desc, created_at asc) as posicion_zona
 from public.profiles;
+
+-- ============================================================
+-- Ver supabase/migration_2.sql para: modos de matchmaking
+-- (tenis_1v1 / tenis_dobles / padel), disponibilidad horaria,
+-- valoraciones post-partido (deportividad/puntualidad) y
+-- códigos de referido.
+-- ============================================================

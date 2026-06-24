@@ -3,26 +3,26 @@
 // reales de Supabase, así que sus "desafíos" se resuelven de forma simulada
 // en el propio dispositivo, sin backend.
 
-const swipesKey = (uid) => `meetraquet_fake_swipes_${uid}`;
+const swipesKey = (uid, modo) => `meetraquet_fake_swipes_${uid}_${modo}`;
 const chatsKey = (uid) => `meetraquet_fake_chats_${uid}`;
 
-export function getFakeSwipes(uid) {
-  try { return JSON.parse(localStorage.getItem(swipesKey(uid))) || {}; } catch { return {}; }
+export function getFakeSwipes(uid, modo) {
+  try { return JSON.parse(localStorage.getItem(swipesKey(uid, modo))) || {}; } catch { return {}; }
 }
-function saveFakeSwipes(uid, obj) {
-  localStorage.setItem(swipesKey(uid), JSON.stringify(obj));
+function saveFakeSwipes(uid, modo, obj) {
+  localStorage.setItem(swipesKey(uid, modo), JSON.stringify(obj));
 }
-export function setFakeSwipe(uid, fakeId, accion) {
-  const s = getFakeSwipes(uid);
+export function setFakeSwipe(uid, modo, fakeId, accion) {
+  const s = getFakeSwipes(uid, modo);
   s[fakeId] = accion;
-  saveFakeSwipes(uid, s);
+  saveFakeSwipes(uid, modo, s);
 }
 // Vuelve a mostrar los perfiles "pasados" (no los ya "desafiados")
-export function limpiarFakePasados(uid) {
-  const s = getFakeSwipes(uid);
+export function limpiarFakePasados(uid, modo) {
+  const s = getFakeSwipes(uid, modo);
   const limpio = {};
   Object.entries(s).forEach(([id, accion]) => { if (accion === 'desafiado') limpio[id] = accion; });
-  saveFakeSwipes(uid, limpio);
+  saveFakeSwipes(uid, modo, limpio);
 }
 
 export function getFakeChats(uid) {
@@ -35,14 +35,15 @@ function saveFakeChats(uid, obj) {
 // Crea el chat con el mensaje de desafío. Se autoacepta al instante (el
 // perfil falso no puede responder de verdad), para no dejar al usuario
 // esperando una respuesta que nunca llegará.
-export function crearFakeChat(uid, fakePerfil) {
+export function crearFakeChat(uid, modo, fakePerfil) {
   const chats = getFakeChats(uid);
-  const chatId = `fake-chat-${fakePerfil.id}`;
+  const chatId = `fake-chat-${modo}-${fakePerfil.id}`;
   const ahora = new Date().toISOString();
   const chat = {
     id: chatId,
     usuario_a: uid,
     usuario_b: fakePerfil.id,
+    modo,
     estado_desafio: 'aceptado',
     desafio_iniciado_por: uid,
     archivado: false,
@@ -54,7 +55,7 @@ export function crearFakeChat(uid, fakePerfil) {
   };
   chats[chatId] = chat;
   saveFakeChats(uid, chats);
-  setFakeSwipe(uid, fakePerfil.id, 'desafiado');
+  setFakeSwipe(uid, modo, fakePerfil.id, 'desafiado');
   return chat;
 }
 

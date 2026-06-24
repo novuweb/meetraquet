@@ -8,6 +8,9 @@ import { esProvinciaCanaria, ubicacionLabel } from '../lib/provincias';
 import SelectorUbicacion from '../components/SelectorUbicacion.jsx';
 import LogroModal from '../components/LogroModal.jsx';
 import { DEMO_MODE } from '../lib/demo';
+import { DISPONIBILIDAD_OPCIONES, iconoDisponibilidad } from '../lib/disponibilidad';
+import HistorialPartidos from '../components/HistorialPartidos.jsx';
+import CodigoReferido from '../components/CodigoReferido.jsx';
 
 const DEPORTES = ['Pádel', 'Tenis', 'Ambos'];
 const NIVELES = ['Principiante', 'Intermedio', 'Avanzado', 'Competición'];
@@ -28,6 +31,14 @@ export default function Profile() {
   const progreso = progresoRango(profile.puntos);
   const logrosConseguidos = getLogrosConseguidos(profile);
   const idsConseguidos = logrosConseguidos.map((l) => l.id);
+
+  function toggleDisponibilidadForm(id) {
+    setForm((prev) => {
+      const actual = prev.disponibilidad || [];
+      const next = actual.includes(id) ? actual.filter((d) => d !== id) : [...actual, id];
+      return { ...prev, disponibilidad: next };
+    });
+  }
 
   async function handleFoto(e) {
     const file = e.target.files?.[0];
@@ -68,6 +79,7 @@ export default function Profile() {
         deporte: form.deporte,
         nivel: form.nivel,
         descripcion: form.descripcion,
+        disponibilidad: form.disponibilidad || [],
       })
       .eq('id', user.id);
 
@@ -124,6 +136,17 @@ export default function Profile() {
         <Stat label="Racha" value={profile.racha_actual} />
       </div>
 
+      {(profile.valoraciones_recibidas || 0) > 0 && (
+        <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', textAlign: 'center', marginBottom: 18 }}>
+          <Stat label="⭐ Deportividad" value={profile.deportividad_media} />
+          <Stat label="⏱️ Puntualidad" value={profile.puntualidad_media} />
+        </div>
+      )}
+
+      <CodigoReferido profile={profile} />
+
+      <HistorialPartidos profile={profile} userId={user?.id} />
+
       {/* LOGROS */}
       <h3 style={{ fontSize: 16, marginBottom: 10 }}>Logros</h3>
       <div className="chip-row" style={{ marginBottom: 18 }}>
@@ -152,7 +175,13 @@ export default function Profile() {
         <div className="card" style={{ marginBottom: 18 }}>
           <p style={{ marginBottom: 8 }}><strong>Deporte:</strong> {profile.deporte}</p>
           <p style={{ marginBottom: 8 }}><strong>Nivel:</strong> {profile.nivel}</p>
-          <p><strong>Descripción:</strong> {profile.descripcion || '—'}</p>
+          <p style={{ marginBottom: 8 }}><strong>Descripción:</strong> {profile.descripcion || '—'}</p>
+          <p>
+            <strong>Disponibilidad:</strong>{' '}
+            {profile.disponibilidad?.length
+              ? profile.disponibilidad.map((d) => iconoDisponibilidad(d)).join(' ')
+              : '—'}
+          </p>
         </div>
       )}
 
@@ -185,6 +214,20 @@ export default function Profile() {
           <div className="form-group">
             <label>Descripción</label>
             <textarea rows={3} maxLength={150} value={form.descripcion || ''} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>¿Cuándo puedes jugar?</label>
+            <div className="chip-row">
+              {DISPONIBILIDAD_OPCIONES.map((o) => (
+                <button
+                  key={o.id}
+                  className={`chip ${(form.disponibilidad || []).includes(o.id) ? 'selected' : ''}`}
+                  onClick={() => toggleDisponibilidadForm(o.id)}
+                >
+                  {o.icono} {o.label}
+                </button>
+              ))}
+            </div>
           </div>
           <SelectorUbicacion
             provincia={form.provincia}

@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabaseClient';
 import { esProvinciaCanaria } from '../lib/provincias';
 import SelectorUbicacion from '../components/SelectorUbicacion.jsx';
+import { DISPONIBILIDAD_OPCIONES } from '../lib/disponibilidad';
 
 const DEPORTES = ['Pádel', 'Tenis', 'Ambos'];
 const NIVELES = ['Principiante', 'Intermedio', 'Avanzado', 'Competición'];
@@ -19,10 +20,16 @@ export default function Onboarding() {
   const [descripcion, setDescripcion] = useState(profile?.descripcion || '');
   const [provincia, setProvincia] = useState(profile?.provincia || '');
   const [isla, setIsla] = useState(profile?.isla || '');
+  const [disponibilidad, setDisponibilidad] = useState(profile?.disponibilidad || []);
+  const [codigoReferido, setCodigoReferido] = useState('');
   const [foto, setFoto] = useState(null);
   const [preview, setPreview] = useState(profile?.avatar_url || null);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
+
+  function toggleDisponibilidad(id) {
+    setDisponibilidad((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
+  }
 
   function handleFoto(e) {
     const file = e.target.files?.[0];
@@ -63,6 +70,7 @@ export default function Onboarding() {
           descripcion,
           provincia,
           isla: esProvinciaCanaria(provincia) ? isla : null,
+          disponibilidad,
           avatar_url,
           perfil_completo: true,
           puntos: profile?.puntos || 0,
@@ -70,6 +78,11 @@ export default function Onboarding() {
         .eq('id', user.id);
 
       if (updateErr) throw updateErr;
+
+      if (codigoReferido.trim()) {
+        const { error: refError } = await supabase.rpc('aplicar_codigo_referido', { p_codigo: codigoReferido.trim() });
+        if (refError) console.warn('Código de referido no aplicado:', refError.message);
+      }
 
       await refreshProfile();
       navigate('/');
@@ -155,6 +168,31 @@ export default function Onboarding() {
           onChangeProvincia={(p) => { setProvincia(p); setIsla(''); }}
           onChangeIsla={setIsla}
         />
+
+        <div className="form-group">
+          <label>¿Cuándo puedes jugar? (elige las que quieras)</label>
+          <div className="chip-row">
+            {DISPONIBILIDAD_OPCIONES.map((o) => (
+              <button
+                type="button"
+                key={o.id}
+                className={`chip ${disponibilidad.includes(o.id) ? 'selected' : ''}`}
+                onClick={() => toggleDisponibilidad(o.id)}
+              >
+                {o.icono} {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>Código de referido (opcional)</label>
+          <input
+            value={codigoReferido}
+            onChange={(e) => setCodigoReferido(e.target.value)}
+            placeholder="Ej. AB12CD3"
+          />
+        </div>
 
         {error && <p className="error-text">{error}</p>}
 

@@ -54,6 +54,13 @@ export const LOGROS_DEF = [
     descripcion: 'Ha cambiado de ubicación alguna vez',
     check: (p) => (p.ubicaciones_cambiadas || 0) >= 1,
   },
+  {
+    id: 'deportista',
+    nombre: 'Deportista',
+    icono: '⭐',
+    descripcion: 'Media de valoraciones superior a 4.5 (mínimo 5 valoraciones)',
+    check: (p) => (p.valoraciones_recibidas || 0) >= 5 && (p.deportividad_media || 0) > 4.5,
+  },
 ];
 
 export function getLogrosConseguidos(profile) {
@@ -67,7 +74,7 @@ export function getLogrosPendientes(profile) {
 }
 
 // Para la carta de matchmaking: máximo 3, priorizando los más "vistosos"
-const PRIORIDAD = ['top10', 'invicto', 'en_racha', 'veterano', 'desafiador', 'activo', 'viajero'];
+const PRIORIDAD = ['top10', 'invicto', 'deportista', 'en_racha', 'veterano', 'desafiador', 'activo', 'viajero'];
 export function getLogrosDestacados(profile, max = 3) {
   const conseguidos = getLogrosConseguidos(profile);
   return conseguidos

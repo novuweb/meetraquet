@@ -8,6 +8,7 @@ import ReportarResultadoForm from '../components/ReportarResultadoForm.jsx';
 import { DEMO_MODE } from '../lib/demo';
 import { demoStore, DEMO_USER_ID } from '../lib/demoData';
 import { getFakeChat, actualizarFakeChat } from '../lib/fakeMatches';
+import ValorarPartido, { yaValorado } from '../components/ValorarPartido.jsx';
 
 const esFakeChatId = (id) => typeof id === 'string' && id.startsWith('fake-chat-');
 
@@ -24,6 +25,7 @@ export default function ChatRoom() {
   const [texto, setTexto] = useState('');
   const [cargando, setCargando] = useState(true);
   const [mostrarFormResultado, setMostrarFormResultado] = useState(false);
+  const [valoradoTick, setValoradoTick] = useState(0);
   const finRef = useRef(null);
 
   useEffect(() => {
@@ -210,6 +212,13 @@ export default function ChatRoom() {
     await supabase.rpc('reportar_resultado', { p_chat_id: chatId, p_perdedor_id: perdedorId, p_resultado: resultado });
   }
 
+  const partidoParaValorar = !esFake && !DEMO_MODE
+    ? Object.values(partidos)
+        .filter((p) => p.estado === 'confirmado' && !yaValorado(p.id))
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0]
+    : null;
+  void valoradoTick;
+
   if (cargando) return <div className="center-screen"><div className="spinner" /></div>;
 
   return (
@@ -295,6 +304,10 @@ export default function ChatRoom() {
             </div>
           );
         })}
+        {partidoParaValorar && (
+          <ValorarPartido partido={partidoParaValorar} otro={otro} onDone={() => setValoradoTick((t) => t + 1)} />
+        )}
+
         <div ref={finRef} />
       </div>
 
