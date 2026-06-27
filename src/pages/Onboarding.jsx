@@ -8,13 +8,13 @@ import { DISPONIBILIDAD_OPCIONES } from '../lib/disponibilidad';
 
 const NIVELES = ['Principiante', 'Intermedio', 'Avanzado', 'Competición'];
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// ─── barra de progreso ────────────────────────────────────────────────────
 function Barra({ paso, total }) {
   return (
-    <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
+    <div style={{ display: 'flex', gap: 5, marginBottom: 32 }}>
       {Array.from({ length: total }).map((_, i) => (
         <div key={i} style={{
-          flex: 1, height: 4, borderRadius: 4,
+          flex: 1, height: 3, borderRadius: 99,
           background: i < paso ? 'var(--accent)' : 'var(--bg-elev)',
           transition: 'background .3s',
         }} />
@@ -23,80 +23,139 @@ function Barra({ paso, total }) {
   );
 }
 
-function ChipRow({ opciones, value, onChange }) {
+// ─── tarjeta de opción seleccionable ─────────────────────────────────────
+function OpcionCard({ titulo, desc, seleccionada, onClick }) {
   return (
-    <div className="chip-row">
-      {opciones.map((o) => (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: '100%', textAlign: 'left', padding: '18px 20px',
+        borderRadius: 16, cursor: 'pointer', transition: 'all .2s',
+        border: `2px solid ${seleccionada ? 'var(--accent)' : 'var(--border)'}`,
+        background: seleccionada ? 'rgba(34,197,94,.08)' : 'var(--bg-card)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}
+    >
+      <div>
+        <p style={{ fontWeight: 700, fontSize: 16, color: seleccionada ? 'var(--accent)' : 'var(--text)', marginBottom: 3 }}>
+          {titulo}
+        </p>
+        {desc && <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.4 }}>{desc}</p>}
+      </div>
+      <div style={{
+        width: 22, height: 22, borderRadius: '50%', flexShrink: 0, marginLeft: 14,
+        border: `2px solid ${seleccionada ? 'var(--accent)' : 'var(--border)'}`,
+        background: seleccionada ? 'var(--accent)' : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {seleccionada && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
+      </div>
+    </button>
+  );
+}
+
+// ─── foto de perfil ───────────────────────────────────────────────────────
+function FotoUpload({ preview, onChange, label }) {
+  return (
+    <div style={{ textAlign: 'center', marginBottom: 20 }}>
+      <label htmlFor="foto-input" style={{ cursor: 'pointer' }}>
+        <div style={{
+          width: 90, height: 90, borderRadius: '50%', margin: '0 auto 8px',
+          border: '2px dashed var(--border)', overflow: 'hidden',
+          background: preview ? `url(${preview}) center/cover` : 'var(--bg-elev)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, color: 'var(--text-muted)',
+        }}>
+          {!preview && 'Foto'}
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--accent)' }}>{label || 'Subir foto (opcional)'}</p>
+      </label>
+      <input id="foto-input" type="file" accept="image/*" onChange={onChange} style={{ display: 'none' }} />
+    </div>
+  );
+}
+
+// ─── chips de nivel ───────────────────────────────────────────────────────
+function SelectorNivel({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {NIVELES.map((n) => (
         <button
-          type="button"
-          key={o}
-          className={`chip ${value === o ? 'selected' : ''}`}
-          onClick={() => onChange(o)}
+          key={n} type="button"
+          className={`chip ${value === n ? 'selected' : ''}`}
+          onClick={() => onChange(n)}
         >
-          {o}
+          {n}
         </button>
       ))}
     </div>
   );
 }
 
-function FotoUpload({ preview, onChange }) {
+// ─── botones de navegación ────────────────────────────────────────────────
+function NavBotones({ onAtras, onContinuar, labelContinuar, cargando }) {
   return (
-    <div className="form-group" style={{ textAlign: 'center' }}>
-      <label htmlFor="foto-input" style={{ cursor: 'pointer' }}>
-        <div className="avatar" style={{
-          width: 100, height: 100, margin: '0 auto 10px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: '2px dashed var(--border)', overflow: 'hidden',
-          fontSize: 13, color: 'var(--text-muted)',
-          backgroundImage: preview ? `url(${preview})` : 'none',
-          backgroundSize: 'cover', backgroundPosition: 'center',
-        }}>
-          {!preview && 'Subir foto'}
-        </div>
-      </label>
-      <input id="foto-input" type="file" accept="image/*" onChange={onChange} style={{ display: 'none' }} />
-      <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Toca para subir foto (opcional)</p>
+    <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
+      {onAtras && (
+        <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={onAtras}>
+          Atras
+        </button>
+      )}
+      <button
+        type={onContinuar ? 'button' : 'submit'}
+        className="btn-primary"
+        style={{ flex: 2 }}
+        onClick={onContinuar}
+        disabled={cargando}
+      >
+        {cargando ? 'Guardando...' : (labelContinuar || 'Continuar')}
+      </button>
     </div>
   );
 }
 
-// ── componente principal ───────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
 export default function Onboarding() {
   const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
-  // paso 0 = selección de modalidad
+  // ── estado del flujo ────────────────────────────────────────────────────
   const [paso, setPaso] = useState(0);
-  const [modalidad, setModalidad] = useState(null); // 'individual' | 'dobles' | 'padel'
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  // datos jugador 1 (o único, si individual)
+  // paso 0 — deporte
+  const [deporte, setDeporte] = useState(null); // 'tenis' | 'padel'
+
+  // paso 1 — modalidad (solo si tenis)
+  const [modalidad, setModalidad] = useState(null); // 'individual' | 'dobles'
+
+  // paso 2 — situación pareja (solo dobles o padel)
+  const [situacion, setSituacion] = useState(null); // 'tengo_pareja' | 'busco_pareja'
+
+  // datos jugador 1
   const [foto1, setFoto1] = useState(null);
   const [preview1, setPreview1] = useState(profile?.avatar_url || null);
   const [nombre1, setNombre1] = useState(profile?.nombre || '');
   const [edad1, setEdad1] = useState(profile?.edad || '');
   const [nivel1, setNivel1] = useState(profile?.nivel || '');
 
-  // datos jugador 2 (solo dobles/padel)
+  // datos jugador 2 (solo si tengo_pareja)
   const [nombre2, setNombre2] = useState('');
   const [edad2, setEdad2] = useState('');
   const [nivel2, setNivel2] = useState('');
 
-  // datos comunes
-  const [descripcion, setDescripcion] = useState(profile?.descripcion || '');
+  // ubicación y disponibilidad
   const [provincia, setProvincia] = useState(profile?.provincia || '');
   const [isla, setIsla] = useState(profile?.isla || '');
   const [disponibilidad, setDisponibilidad] = useState(profile?.disponibilidad || []);
+  const [descripcion, setDescripcion] = useState(profile?.descripcion || '');
   const [codigoReferido, setCodigoReferido] = useState('');
 
-  const esPareja = modalidad === 'dobles' || modalidad === 'padel';
-
-  // cuántos pasos tiene el flujo según modalidad
-  // individual: 0(modal) → 1(foto+nombre+edad) → 2(nivel+desc) → 3(ubicación+disp) → submit
-  // dobles/padel: 0 → 1(jugador1) → 2(jugador2) → 3(ubicación+disp) → submit
-  const totalPasos = 4; // pasos 1-3 + el 0 de selección
+  // ── helpers ─────────────────────────────────────────────────────────────
+  const esDobles = deporte === 'padel' || (deporte === 'tenis' && modalidad === 'dobles');
+  const tienePareja = esDobles && situacion === 'tengo_pareja';
 
   function handleFoto1(e) {
     const f = e.target.files?.[0];
@@ -109,31 +168,77 @@ export default function Onboarding() {
     setDisponibilidad((prev) => prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]);
   }
 
-  function avanzar() {
-    setError('');
-    if (paso === 0) {
-      if (!modalidad) { setError('Elige una modalidad.'); return; }
-      setPaso(1); return;
-    }
-    if (paso === 1) {
-      if (!nombre1.trim()) { setError('Escribe tu nombre.'); return; }
-      if (!edad1 || Number(edad1) < 12 || Number(edad1) > 99) { setError('Edad no válida.'); return; }
-      if (!nivel1) { setError('Selecciona tu nivel.'); return; }
-      setPaso(2); return;
-    }
-    if (paso === 2) {
-      if (esPareja) {
-        if (!nombre2.trim()) { setError('Escribe el nombre del jugador 2.'); return; }
-        if (!edad2 || Number(edad2) < 12 || Number(edad2) > 99) { setError('Edad no válida.'); return; }
-        if (!nivel2) { setError('Selecciona el nivel del jugador 2.'); return; }
-      }
-      setPaso(3); return;
-    }
+  function err(msg) { setError(msg); return false; }
+  function ok() { setError(''); return true; }
+
+  // ── navegación entre pasos ───────────────────────────────────────────────
+  // Pasos del flujo:
+  //   0 → deporte
+  //   1 → modalidad (si tenis) / situacion_pareja (si padel)
+  //   2 → situacion_pareja (si tenis dobles) / datos jugador 1 (si padel)
+  //   3 → datos jugador 1 (si tenis dobles) / datos jugador 2 o ubicacion
+  //   etc.
+  // Usamos un array de "pantallas" dinámico según las selecciones.
+
+  const PANTALLAS = buildPantallas();
+
+  function buildPantallas() {
+    const p = ['deporte'];
+    if (deporte === 'tenis') p.push('modalidad');
+    if (esDobles) p.push('situacion_pareja');
+    p.push('jugador1');
+    if (tienePareja) p.push('jugador2');
+    p.push('ubicacion');
+    return p;
   }
 
+  const pantallaActual = PANTALLAS[paso] || 'deporte';
+  const totalPasos = PANTALLAS.length;
+
+  function siguiente() {
+    setError('');
+    setPaso((p) => Math.min(p + 1, totalPasos - 1));
+  }
+
+  function anterior() {
+    setError('');
+    setPaso((p) => Math.max(p - 1, 0));
+  }
+
+  // ── validación por pantalla ──────────────────────────────────────────────
+  function validar(pantalla) {
+    if (pantalla === 'deporte') {
+      return deporte ? ok() : err('Selecciona un deporte.');
+    }
+    if (pantalla === 'modalidad') {
+      return modalidad ? ok() : err('Elige cómo juegas.');
+    }
+    if (pantalla === 'situacion_pareja') {
+      return situacion ? ok() : err('Indica si tienes pareja o buscas una.');
+    }
+    if (pantalla === 'jugador1') {
+      if (!nombre1.trim()) return err('Escribe tu nombre.');
+      if (!edad1 || Number(edad1) < 12 || Number(edad1) > 99) return err('Edad no válida.');
+      if (!nivel1) return err('Selecciona tu nivel.');
+      return ok();
+    }
+    if (pantalla === 'jugador2') {
+      if (!nombre2.trim()) return err('Escribe el nombre de tu compañero/a.');
+      if (!edad2 || Number(edad2) < 12 || Number(edad2) > 99) return err('Edad no válida.');
+      if (!nivel2) return err('Selecciona el nivel de tu compañero/a.');
+      return ok();
+    }
+    return ok();
+  }
+
+  function avanzar() {
+    if (!validar(pantallaActual)) return;
+    siguiente();
+  }
+
+  // ── envío final ──────────────────────────────────────────────────────────
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
     if (!provincia) { setError('Selecciona tu provincia.'); return; }
     if (esProvinciaCanaria(provincia) && !isla) { setError('Selecciona tu isla.'); return; }
 
@@ -149,15 +254,24 @@ export default function Onboarding() {
         avatar_url = data.publicUrl;
       }
 
-      const nombreFinal = esPareja ? `${nombre1.trim()} & ${nombre2.trim()}` : nombre1.trim();
-      const nivelFinal = esPareja ? `${nivel1} / ${nivel2}` : nivel1;
-      const deporteFinal = modalidad === 'padel' ? 'Pádel' : 'Tenis';
+      const deporteDB = deporte === 'padel' ? 'Pádel' : 'Tenis';
+      const nombreDB = tienePareja ? `${nombre1.trim()} & ${nombre2.trim()}` : nombre1.trim();
+      const nivelDB = tienePareja ? `${nivel1} / ${nivel2}` : nivel1;
+
+      // dobles_busca:
+      //   'rival'  → tengo pareja y busco contra quién jugar
+      //   'pareja' → busco compañero/a para jugar
+      //   null     → individual
+      let dobles_busca = null;
+      if (esDobles) {
+        dobles_busca = situacion === 'tengo_pareja' ? 'rival' : 'pareja';
+      }
 
       const { error: updateErr } = await supabase.from('profiles').update({
-        nombre: nombreFinal,
+        nombre: nombreDB,
         edad: Number(edad1),
-        deporte: deporteFinal,
-        nivel: nivelFinal,
+        deporte: deporteDB,
+        nivel: nivelDB,
         descripcion,
         provincia,
         isla: esProvinciaCanaria(provincia) ? isla : null,
@@ -165,7 +279,7 @@ export default function Onboarding() {
         avatar_url,
         perfil_completo: true,
         puntos: profile?.puntos || 0,
-        ...(esPareja ? { dobles_busca: 'rival' } : {}),
+        dobles_busca,
       }).eq('id', user.id);
 
       if (updateErr) throw updateErr;
@@ -176,67 +290,107 @@ export default function Onboarding() {
 
       await refreshProfile();
       navigate('/');
-    } catch (err) {
-      setError(err.message);
+    } catch (err2) {
+      setError(err2.message);
     } finally {
       setCargando(false);
     }
   }
 
-  // ── render ──────────────────────────────────────────────────────────────
+  // ── render ───────────────────────────────────────────────────────────────
   return (
-    <div className="page">
-      <div style={{ textAlign: 'center', marginBottom: 16 }}>
-        <img src="/logo-mr.png" alt="MeetRacquet" style={{ height: 48 }} />
+    <div className="page" style={{ maxWidth: 440, margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: 20 }}>
+        <img src="/logo-mr.png" alt="MeetRacquet" style={{ height: 44 }} />
       </div>
 
-      {paso > 0 && <Barra paso={paso} total={3} />}
+      {paso > 0 && <Barra paso={paso} total={totalPasos - 1} />}
 
-      {/* PASO 0 — Modalidad */}
-      {paso === 0 && (
+      {/* ── PANTALLA 0: deporte ─────────────────────────────────────── */}
+      {pantallaActual === 'deporte' && (
         <div>
-          <h1 style={{ fontSize: 24, marginBottom: 8 }}>¿Qué vas a jugar?</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
-            Esto determina cómo se muestra tu perfil a otros jugadores.
+          <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>Bienvenido</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 28 }}>
+            Cuéntanos qué deporte practicas para personalizar tu perfil.
           </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
-            {[
-              { id: 'individual', titulo: 'Tenis individual', desc: 'Juegas solo, buscas rivales para 1vs1.' },
-              { id: 'dobles', titulo: 'Tenis dobles', desc: 'Jugais en pareja, buscais rivales o compañeros.' },
-              { id: 'padel', titulo: 'Pádel', desc: 'Jugais en pareja, buscais rivales o compañeros.' },
-            ].map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setModalidad(m.id)}
-                style={{
-                  textAlign: 'left', padding: '16px 18px', borderRadius: 14,
-                  border: `2px solid ${modalidad === m.id ? 'var(--accent)' : 'var(--border)'}`,
-                  background: modalidad === m.id ? 'rgba(34,197,94,.08)' : 'var(--bg-card)',
-                  cursor: 'pointer', transition: 'border-color .2s, background .2s',
-                }}
-              >
-                <p style={{ fontWeight: 700, marginBottom: 4, color: modalidad === m.id ? 'var(--accent)' : 'var(--text)' }}>
-                  {m.titulo}
-                </p>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{m.desc}</p>
-              </button>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <OpcionCard
+              titulo="Tenis"
+              desc="Individual o dobles, en pista dura, tierra o hierba."
+              seleccionada={deporte === 'tenis'}
+              onClick={() => setDeporte('tenis')}
+            />
+            <OpcionCard
+              titulo="Padel"
+              desc="Siempre en pareja, pista cerrada con cristales."
+              seleccionada={deporte === 'padel'}
+              onClick={() => setDeporte('padel')}
+            />
           </div>
-
-          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-          <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={avanzar}>
-            Continuar
-          </button>
+          {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
+          <NavBotones onContinuar={avanzar} />
         </div>
       )}
 
-      {/* PASO 1 — Jugador 1 */}
-      {paso === 1 && (
+      {/* ── PANTALLA: modalidad (solo tenis) ───────────────────────── */}
+      {pantallaActual === 'modalidad' && (
         <div>
-          <h1 style={{ fontSize: 22, marginBottom: 4 }}>
-            {esPareja ? 'Jugador 1 — tus datos' : 'Tus datos'}
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>¿Cómo juegas?</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 28 }}>
+            Esto define qué tipo de rivales te mostraremos.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <OpcionCard
+              titulo="Individual"
+              desc="Juegas solo, partidos de 1 contra 1."
+              seleccionada={modalidad === 'individual'}
+              onClick={() => setModalidad('individual')}
+            />
+            <OpcionCard
+              titulo="Dobles"
+              desc="Juegas en pareja, partidos de 2 contra 2."
+              seleccionada={modalidad === 'dobles'}
+              onClick={() => setModalidad('dobles')}
+            />
+          </div>
+          {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
+          <NavBotones onAtras={anterior} onContinuar={avanzar} />
+        </div>
+      )}
+
+      {/* ── PANTALLA: situacion_pareja ──────────────────────────────── */}
+      {pantallaActual === 'situacion_pareja' && (
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>
+            {deporte === 'padel' ? 'Tu pareja de padel' : 'Tu pareja de dobles'}
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 28 }}>
+            ¿Ya tienes con quién jugar o estás buscando compañero?
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <OpcionCard
+              titulo="Tengo pareja"
+              desc="Ya tenéis pareja formada y buscais contra quién jugar."
+              seleccionada={situacion === 'tengo_pareja'}
+              onClick={() => setSituacion('tengo_pareja')}
+            />
+            <OpcionCard
+              titulo="Busco pareja"
+              desc="Juegas solo y quieres encontrar compañero/a para formar pareja."
+              seleccionada={situacion === 'busco_pareja'}
+              onClick={() => setSituacion('busco_pareja')}
+            />
+          </div>
+          {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
+          <NavBotones onAtras={anterior} onContinuar={avanzar} />
+        </div>
+      )}
+
+      {/* ── PANTALLA: jugador1 ──────────────────────────────────────── */}
+      {pantallaActual === 'jugador1' && (
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
+            {tienePareja ? 'Jugador 1 — tus datos' : 'Tus datos'}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
             Esta información la verán los demás al buscarte.
@@ -254,21 +408,18 @@ export default function Onboarding() {
           </div>
           <div className="form-group">
             <label>Nivel de juego</label>
-            <ChipRow opciones={NIVELES} value={nivel1} onChange={setNivel1} />
+            <SelectorNivel value={nivel1} onChange={setNivel1} />
           </div>
 
-          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setPaso(0)}>Atrás</button>
-            <button type="button" className="btn-primary" style={{ flex: 2 }} onClick={avanzar}>Continuar</button>
-          </div>
+          {error && <p className="error-text" style={{ marginTop: 8 }}>{error}</p>}
+          <NavBotones onAtras={anterior} onContinuar={avanzar} />
         </div>
       )}
 
-      {/* PASO 2 — Jugador 2 (solo pareja) o directo a ubicación (individual) */}
-      {paso === 2 && esPareja && (
+      {/* ── PANTALLA: jugador2 (solo si tiene pareja) ───────────────── */}
+      {pantallaActual === 'jugador2' && (
         <div>
-          <h1 style={{ fontSize: 22, marginBottom: 4 }}>Jugador 2</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Jugador 2</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
             Datos de tu compañero/a de pareja.
           </p>
@@ -283,39 +434,18 @@ export default function Onboarding() {
           </div>
           <div className="form-group">
             <label>Nivel de juego</label>
-            <ChipRow opciones={NIVELES} value={nivel2} onChange={setNivel2} />
+            <SelectorNivel value={nivel2} onChange={setNivel2} />
           </div>
 
-          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setPaso(1)}>Atrás</button>
-            <button type="button" className="btn-primary" style={{ flex: 2 }} onClick={avanzar}>Continuar</button>
-          </div>
+          {error && <p className="error-text" style={{ marginTop: 8 }}>{error}</p>}
+          <NavBotones onAtras={anterior} onContinuar={avanzar} />
         </div>
       )}
 
-      {paso === 2 && !esPareja && (
-        <div>
-          <h1 style={{ fontSize: 22, marginBottom: 4 }}>Un poco más</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
-            Opcional — ayuda a los rivales a conocerte mejor.
-          </p>
-          <div className="form-group">
-            <label>Descripción ({descripcion.length}/150)</label>
-            <textarea maxLength={150} rows={3} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Cuéntanos algo sobre tu juego..." />
-          </div>
-          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setPaso(1)}>Atrás</button>
-            <button type="button" className="btn-primary" style={{ flex: 2 }} onClick={avanzar}>Continuar</button>
-          </div>
-        </div>
-      )}
-
-      {/* PASO 3 — Ubicación + disponibilidad + referido */}
-      {paso === 3 && (
+      {/* ── PANTALLA: ubicacion ─────────────────────────────────────── */}
+      {pantallaActual === 'ubicacion' && (
         <form onSubmit={handleSubmit}>
-          <h1 style={{ fontSize: 22, marginBottom: 4 }}>Ubicación y horarios</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Ubicación y horarios</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
             Para mostrarte jugadores cerca de ti.
           </p>
@@ -329,7 +459,7 @@ export default function Onboarding() {
 
           <div className="form-group">
             <label>¿Cuándo podéis jugar?</label>
-            <div className="chip-row">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {DISPONIBILIDAD_OPCIONES.map((o) => (
                 <button
                   type="button"
@@ -343,25 +473,23 @@ export default function Onboarding() {
             </div>
           </div>
 
-          {esPareja && (
-            <div className="form-group">
-              <label>Descripcion (opcional)</label>
-              <textarea maxLength={150} rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Algo sobre vuestra pareja..." />
-            </div>
-          )}
+          <div className="form-group">
+            <label>Descripcion (opcional)</label>
+            <textarea
+              maxLength={150} rows={2}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Algo sobre tu juego o disponibilidad..."
+            />
+          </div>
 
           <div className="form-group">
-            <label>Código de referido (opcional)</label>
+            <label>Codigo de referido (opcional)</label>
             <input value={codigoReferido} onChange={(e) => setCodigoReferido(e.target.value)} placeholder="Ej. AB12CD3" />
           </div>
 
-          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setPaso(2)}>Atrás</button>
-            <button type="submit" className="btn-primary" style={{ flex: 2 }} disabled={cargando}>
-              {cargando ? 'Guardando...' : 'Entrar a MeetRacquet'}
-            </button>
-          </div>
+          {error && <p className="error-text" style={{ marginTop: 8 }}>{error}</p>}
+          <NavBotones onAtras={anterior} labelContinuar="Entrar a MeetRacquet" cargando={cargando} />
         </form>
       )}
     </div>
