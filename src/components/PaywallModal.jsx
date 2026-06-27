@@ -1,4 +1,5 @@
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useTheme } from '../hooks/useTheme';
 
 const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/4gMeVf8SUbp991VdBm4c809';
 
@@ -9,10 +10,9 @@ const BENEFITS = [
   'Accede a todos los modos de matchmaking',
 ];
 
-// Estrella SVG sin emoji
-function Star({ filled = true }) {
+function Star() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#F59E0B' : 'none'} stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round">
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   );
@@ -20,6 +20,15 @@ function Star({ filled = true }) {
 
 export default function PaywallModal({ onClose }) {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
+
+  const bg = dark ? 'rgba(0,0,0,0.97)' : 'rgba(255,255,255,0.97)';
+  const colorTexto = dark ? '#fff' : '#0A0A0A';
+  const colorMuted = dark ? '#9A9A9A' : '#6B6B6B';
+  const colorCard = dark ? 'rgba(34,197,94,0.06)' : 'rgba(34,197,94,0.06)';
+  const colorCheck = dark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.12)';
+  const acento = '#22C55E';
 
   function irAPago() {
     const params = new URLSearchParams();
@@ -31,7 +40,7 @@ export default function PaywallModal({ onClose }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.96)',
+      background: bg,
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       justifyContent: 'center', padding: '24px',
       backdropFilter: 'blur(10px)',
@@ -39,13 +48,13 @@ export default function PaywallModal({ onClose }) {
     }}>
       {/* Valoración */}
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', color: '#9A9A9A', marginBottom: '8px', letterSpacing: '0.05em' }}>
+        <div style={{ fontSize: '12px', color: colorMuted, marginBottom: '8px', letterSpacing: '0.05em' }}>
           Usado por jugadores de toda España
         </div>
         <div style={{ display: 'flex', gap: 3, justifyContent: 'center', marginBottom: 4 }}>
-          {[1,2,3,4,5].map((i) => <Star key={i} filled />)}
+          {[1,2,3,4,5].map((i) => <Star key={i} />)}
         </div>
-        <div style={{ fontSize: '13px', color: '#9A9A9A' }}>4.8 · Valoración media</div>
+        <div style={{ fontSize: '13px', color: colorMuted }}>4.8 · Valoración media</div>
       </div>
 
       {/* Logo */}
@@ -55,9 +64,9 @@ export default function PaywallModal({ onClose }) {
       <h1 style={{
         fontFamily: 'Poppins, sans-serif', fontSize: '32px', fontWeight: 800,
         textAlign: 'center', lineHeight: 1.1, marginBottom: '22px',
-        letterSpacing: '-0.02em', color: '#fff',
+        letterSpacing: '-0.02em', color: colorTexto,
       }}>
-        <span style={{ color: '#22C55E' }}>Acceso</span> ilimitado
+        <span style={{ color: acento }}>Acceso</span> ilimitado
       </h1>
 
       {/* Beneficios */}
@@ -66,12 +75,12 @@ export default function PaywallModal({ onClose }) {
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
               width: '30px', height: '30px', borderRadius: '9px', flexShrink: 0,
-              background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.25)',
+              background: colorCheck, border: '1px solid rgba(34,197,94,0.25)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <span style={{ color: '#22C55E', fontSize: '15px', fontWeight: 700 }}>✓</span>
+              <span style={{ color: acento, fontSize: '15px', fontWeight: 700 }}>✓</span>
             </div>
-            <span style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.4, color: '#fff' }}>{b}</span>
+            <span style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.4, color: colorTexto }}>{b}</span>
           </div>
         ))}
       </div>
@@ -79,15 +88,14 @@ export default function PaywallModal({ onClose }) {
       {/* Precio */}
       <div style={{
         width: '100%', maxWidth: '320px',
-        border: '1.5px solid #22C55E', borderRadius: '16px',
+        border: `1.5px solid ${acento}`, borderRadius: '16px',
         padding: '16px', textAlign: 'center', marginBottom: '18px',
-        background: 'rgba(34,197,94,0.06)',
-        boxShadow: '0 0 24px rgba(34,197,94,0.1)',
+        background: colorCard, boxShadow: '0 0 24px rgba(34,197,94,0.1)',
       }}>
-        <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff' }}>
-          <span style={{ color: '#22C55E' }}>2,99 €</span>/mes
+        <div style={{ fontSize: '24px', fontWeight: 700, color: colorTexto }}>
+          <span style={{ color: acento }}>2,99 €</span>/mes
         </div>
-        <div style={{ fontSize: '13px', color: '#9A9A9A', marginTop: '4px' }}>Cancela cuando quieras</div>
+        <div style={{ fontSize: '13px', color: colorMuted, marginTop: '4px' }}>Cancela cuando quieras</div>
       </div>
 
       {/* Botón */}
@@ -99,12 +107,12 @@ export default function PaywallModal({ onClose }) {
         Suscribirme ahora
       </button>
 
-      <div style={{ display: 'flex', gap: '16px', marginTop: '16px', fontSize: '12px', color: '#9A9A9A' }}>
+      <div style={{ display: 'flex', gap: '16px', marginTop: '16px', fontSize: '12px', color: colorMuted }}>
         <span style={{ cursor: 'pointer', textDecoration: 'underline' }}>Términos</span>
         <span>·</span>
         <span style={{ cursor: 'pointer', textDecoration: 'underline' }}>Privacidad</span>
         <span>·</span>
-        <span style={{ cursor: 'pointer', textDecoration: 'underline', color: '#22C55E' }} onClick={onClose}>Cancelar</span>
+        <span style={{ cursor: 'pointer', textDecoration: 'underline', color: acento }} onClick={onClose}>Cancelar</span>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 const STORAGE_KEY = 'meetraquet_theme';
 
 export function useTheme() {
-  const [theme, setTheme] = useState(() => localStorage.getItem(STORAGE_KEY) || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem(STORAGE_KEY) || 'light');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
