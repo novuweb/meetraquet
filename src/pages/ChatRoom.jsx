@@ -9,6 +9,7 @@ import { DEMO_MODE } from '../lib/demo';
 import { demoStore, DEMO_USER_ID } from '../lib/demoData';
 import { getFakeChat, actualizarFakeChat } from '../lib/fakeMatches';
 import ValorarPartido, { yaValorado } from '../components/ValorarPartido.jsx';
+import MatchAcceptedScreen from '../components/MatchAcceptedScreen.jsx';
 
 const esFakeChatId = (id) => typeof id === 'string' && id.startsWith('fake-chat-');
 
@@ -26,6 +27,7 @@ export default function ChatRoom() {
   const [cargando, setCargando] = useState(true);
   const [mostrarFormResultado, setMostrarFormResultado] = useState(false);
   const [valoradoTick, setValoradoTick] = useState(0);
+  const [showMatchAccepted, setShowMatchAccepted] = useState(false);
   const finRef = useRef(null);
 
   useEffect(() => {
@@ -139,6 +141,10 @@ export default function ChatRoom() {
 
   function onDesafioResuelto(accion) {
     setChat((prev) => ({ ...prev, estado_desafio: accion }));
+    if (accion === 'aceptado') {
+      setShowMatchAccepted(true);
+      setTimeout(() => setShowMatchAccepted(false), 3000);
+    }
 
     if (DEMO_MODE) {
       const sistema = {
@@ -219,10 +225,26 @@ export default function ChatRoom() {
     : null;
   void valoradoTick;
 
-  if (cargando) return <div className="center-screen"><div className="spinner" /></div>;
+  if (cargando) return (
+    <div className="center-screen">
+      <div style={{ display:'flex',flexDirection:'column',gap:12,width:'100%',maxWidth:340,padding:'0 20px' }}>
+        <div className="skeleton skeleton-line" style={{width:'50%',height:20}}/>
+        {[1,2,3].map(i=><div key={i} className="skeleton skeleton-card" style={{height:48}}/>)}
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {showMatchAccepted && (
+        <MatchAcceptedScreen
+          myName={profile?.nombre}
+          myColor="#22C55E"
+          rivalName={otro?.nombre}
+          rivalColor="#7c3aed"
+          onGoToChat={() => setShowMatchAccepted(false)}
+        />
+      )}
       <div className="page-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, alignItems: 'center' }}>
         <button onClick={() => navigate('/mensajes')} style={{ fontSize: 20, marginRight: 6 }}>←</button>
         <button

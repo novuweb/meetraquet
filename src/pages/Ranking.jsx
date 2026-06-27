@@ -7,11 +7,17 @@ import { ubicacionKey } from '../lib/provincias';
 import { DEMO_MODE } from '../lib/demo';
 import { demoRanking } from '../lib/demoData';
 import { PERFILES_FALSOS } from '../lib/perfilesFalsos';
+import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
+
+function AnimatedPts({ pts }) {
+  const animated = useAnimatedCounter(pts || 0);
+  return <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{animated} pts</span>;
+}
 
 export default function Ranking() {
   const { profile, user } = useAuth();
-  const [filtroZona, setFiltroZona] = useState('global'); // 'global' | 'zona'
-  const [filtroDeporte, setFiltroDeporte] = useState('todos'); // 'todos' | 'Pádel' | 'Tenis'
+  const [filtroZona, setFiltroZona] = useState('global');
+  const [filtroDeporte, setFiltroDeporte] = useState('todos');
   const [todos, setTodos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -52,7 +58,16 @@ export default function Ranking() {
     .sort((a, b) => b.puntos - a.puntos)
     .map((j, i) => ({ ...j, posicion: i + 1 }));
 
-  if (cargando) return <div className="center-screen"><div className="spinner" /></div>;
+  if (cargando) return (
+    <div className="page">
+      <div className="skeleton skeleton-line" style={{ width: '40%', marginBottom: 18, height: 28 }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="skeleton skeleton-card" style={{ height: 64 }} />
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="page">
@@ -103,7 +118,7 @@ export default function Ranking() {
               <p style={{ fontWeight: esYo ? 800 : 600 }}>{j.nombre}{esYo && ' (tú)'}</p>
               <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{rango.nombre}</p>
             </div>
-            <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{j.puntos} pts</span>
+            <AnimatedPts pts={j.puntos} />
           </Link>
         );
       })}

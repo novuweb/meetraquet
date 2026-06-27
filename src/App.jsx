@@ -11,7 +11,7 @@ import Matchmaking from './pages/Matchmaking.jsx';
 import Messages from './pages/Messages.jsx';
 import ChatRoom from './pages/ChatRoom.jsx';
 import Ranking from './pages/Ranking.jsx';
-import MapPage from './pages/MapPage.jsx';
+import ClubsPage from './pages/ClubsPage.jsx';
 import Profile from './pages/Profile.jsx';
 import PlayerProfile from './pages/PlayerProfile.jsx';
 
@@ -43,7 +43,7 @@ export default function App() {
           <Route path="/mensajes" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
           <Route path="/chat/:chatId" element={<ProtectedRoute><ChatRoom /></ProtectedRoute>} />
           <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
-          <Route path="/mapa" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
+          <Route path="/clubs" element={<ProtectedRoute><ClubsPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/jugador/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
         </Routes>

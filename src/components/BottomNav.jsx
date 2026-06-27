@@ -1,6 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 
-// Iconos en línea (SVG), sin emojis, para un acabado más serio/premium.
 const IconMatch = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="8" cy="8" r="5" />
@@ -17,10 +17,10 @@ const IconRanking = () => (
     <path d="M4 19h16M7 19V11M12 19V5M17 19v-7" />
   </svg>
 );
-const IconMap = () => (
+const IconClubs = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11z" />
-    <circle cx="12" cy="10" r="2.5" />
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
   </svg>
 );
 const IconProfile = () => (
@@ -34,13 +34,36 @@ const ITEMS = [
   { to: '/', label: 'Partidos', Icon: IconMatch },
   { to: '/mensajes', label: 'Mensajes', Icon: IconMessages },
   { to: '/ranking', label: 'Ranking', Icon: IconRanking },
-  { to: '/mapa', label: 'Mapa', Icon: IconMap },
+  { to: '/clubs', label: 'Clubs', Icon: IconClubs },
   { to: '/perfil', label: 'Perfil', Icon: IconProfile },
 ];
 
 export default function BottomNav() {
+  const navRef = useRef(null);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const scrollEl = document.querySelector('.scroll-area');
+    if (!scrollEl || !navRef.current) return;
+
+    const onScroll = () => {
+      const current = scrollEl.scrollTop;
+      const atBottom = scrollEl.scrollHeight - current - scrollEl.clientHeight < 10;
+
+      if (atBottom || current < lastScrollY.current) {
+        navRef.current?.classList.remove('nav-hidden');
+      } else if (current > lastScrollY.current && current > 40) {
+        navRef.current?.classList.add('nav-hidden');
+      }
+      lastScrollY.current = current;
+    };
+
+    scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    return () => scrollEl.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" ref={navRef}>
       {ITEMS.map(({ to, label, Icon }) => (
         <NavLink
           key={to}

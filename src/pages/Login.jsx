@@ -33,10 +33,8 @@ export default function Login() {
     <div className="center-screen">
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <h1 style={{ fontSize: 30 }}>
-            Meet<span style={{ color: 'var(--accent)' }}>Raquet</span>
-          </h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: 8, fontSize: 14 }}>
+          <img src="/logo-mr.png" alt="MeetRacquet" style={{ height: 72, margin: '0 auto 14px' }} />
+          <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>
             Encuentra rival. Desafía. Juega.
           </p>
         </div>

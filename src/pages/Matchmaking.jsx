@@ -11,6 +11,7 @@ import { getFakeSwipes, setFakeSwipe, crearFakeChat, limpiarFakePasados } from '
 import { MODOS, getModo } from '../lib/modos';
 import { solapeDisponibilidad } from '../lib/disponibilidad';
 import { sonidoDesafio, sonidoPasar } from '../lib/sounds';
+import PaywallModal from '../components/PaywallModal.jsx';
 
 const esFakeId = (id) => typeof id === 'string' && id.startsWith('fake-');
 
@@ -22,6 +23,7 @@ export default function Matchmaking() {
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
     if (DEMO_MODE) {
@@ -97,6 +99,10 @@ export default function Matchmaking() {
     setProcesando(false);
   }
 
+  function desafiarConPaywall(jugador) {
+    setShowPaywall(true);
+  }
+
   async function desafiar(jugador) {
     if (procesando) return;
     setProcesando(true);
@@ -148,6 +154,7 @@ export default function Matchmaking() {
 
   return (
     <div className="page" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       <div className="page-header" style={{ padding: 0, marginBottom: 12 }}>
         <h1>Encuentra tu rival</h1>
       </div>
@@ -191,7 +198,7 @@ export default function Matchmaking() {
                 jugador={jugador}
                 esTop={idx === arr.length - 1}
                 onPasar={() => pasar(jugador)}
-                onDesafiar={() => desafiar(jugador)}
+                onDesafiar={() => desafiarConPaywall(jugador)}
               />
             ))}
           </div>
@@ -206,7 +213,7 @@ export default function Matchmaking() {
                 ✕
               </button>
               <button
-                onClick={() => desafiar(jugadores[0])}
+                onClick={() => desafiarConPaywall(jugadores[0])}
                 disabled={procesando}
                 style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--accent)', fontSize: 24, color: '#fff' }}
               >

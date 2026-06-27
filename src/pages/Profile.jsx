@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
+import { playDing } from '../lib/sounds';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabaseClient';
@@ -24,11 +26,25 @@ export default function Profile() {
 
   const [form, setForm] = useState(() => ({ ...profile }));
 
-  if (!profile) return <div className="center-screen"><div className="spinner" /></div>;
+  if (!profile) return (
+    <div className="center-screen">
+      <div style={{ display:'flex',flexDirection:'column',gap:12,width:'100%',maxWidth:340 }}>
+        <div className="skeleton skeleton-avatar" style={{width:100,height:100,margin:'0 auto'}}/>
+        <div className="skeleton skeleton-line" style={{width:'60%',margin:'0 auto'}}/>
+        <div className="skeleton skeleton-card" style={{height:80}}/>
+      </div>
+    </div>
+  );
 
   const rango = getRango(profile.puntos);
   const siguiente = getSiguienteRango(profile.puntos);
   const progreso = progresoRango(profile.puntos);
+  const puntosAnimados = useAnimatedCounter(profile.puntos || 0);
+  const prevPuntos = useRef(profile.puntos);
+  useEffect(() => {
+    if (profile.puntos > prevPuntos.current) playDing();
+    prevPuntos.current = profile.puntos;
+  }, [profile.puntos]);
   const logrosConseguidos = getLogrosConseguidos(profile);
   const idsConseguidos = logrosConseguidos.map((l) => l.id);
 
@@ -114,7 +130,7 @@ export default function Profile() {
         <input id="foto-perfil" type="file" accept="image/*" onChange={handleFoto} style={{ display: 'none' }} />
         <h2 style={{ fontSize: 22 }}>{profile.nombre}, {profile.edad}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{ubicacionLabel(profile.provincia, profile.isla)}</p>
-        <p style={{ marginTop: 6, fontSize: 14 }}><strong>{rango.nombre}</strong> · {profile.puntos} pts</p>
+        <p style={{ marginTop: 6, fontSize: 14 }}><strong>{rango.nombre}</strong> · {puntosAnimados} pts</p>
 
         {siguiente && (
           <div style={{ marginTop: 12 }}>

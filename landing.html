@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MeetRacquet – Encuentra tu rival perfecto</title>
+  <meta name="description" content="La app de matchmaking para jugadores de tenis y pádel. Desafía, compite y escala en el ranking. Disponible el 27 de julio de 2026." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* =====================================================
+       TOKENS DE DISEÑO — extraídos de src/index.css
+    ===================================================== */
+    :root {
+      --verde:        #22C55E;
+      --verde-oscuro: #16A34A;
+      --negro:        #0A0A0A;
+
+      /* Tema oscuro */
+      --bg:       #0A0A0A;
+      --bg-elev:  #161616;
+      --bg-card:  #1C1C1C;
+      --text:     #FFFFFF;
+      --text-muted: #9A9A9A;
+      --border:   #2A2A2A;
+      --accent:   #22C55E;
+
+      /* Rangos */
+      --novato:      #92400E;
+      --calentando:  #EA580C;
+      --consistente: #CA8A04;
+      --competidor:  #16A34A;
+      --elite:       #2563EB;
+      --leyenda:     #9333EA;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; font-weight: 700; }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    /* =====================================================
+       UTILIDADES
+    ===================================================== */
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      padding: 16px 28px;
+      border-radius: 14px;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: transform .15s ease, opacity .2s ease, box-shadow .2s ease;
+      box-shadow: 0 0 0 0 rgba(34,197,94,.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(34,197,94,.35);
+    }
+    .btn-primary:active { transform: scale(.97); }
+
+    .badge-rank {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* =====================================================
+       HERO
+    ===================================================== */
+    .hero {
+      min-height: 100svh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-logo {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 32px;
+    }
+    .hero-logo-icon {
+      width: 60px; height: 60px;
+      background: var(--accent);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px;
+      box-shadow: 0 4px 24px rgba(34,197,94,.4);
+    }
+    .hero-logo-name {
+      font-family: 'Poppins', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+    .hero-logo-name span { color: var(--accent); }
+    .hero h1 {
+      font-size: clamp(2.4rem, 7vw, 4.2rem);
+      font-weight: 900;
+      line-height: 1.08;
+      letter-spacing: -2px;
+      max-width: 700px;
+      margin-bottom: 20px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+    .hero p.subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-muted);
+      max-width: 520px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+    .hero-chips {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      justify-content: center;
+      margin-bottom: 48px;
+    }
+    .chip {
+      padding: 7px 16px;
+      border-radius: 30px;
+      border: 1.5px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-card);
+    }
+    .chip.green { border-color: var(--accent); color: var(--accent); }
+
+    /* =====================================================
+       SECCIÓN DEMO / TUTORIAL
+    ===================================================== */
+    .demo-section {
+      padding: 80px 24px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .demo-section > .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .demo-section > h2 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      text-align: center;
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+    }
+    .demo-section > .desc {
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 480px;
+      margin-bottom: 48px;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* Marco del teléfono */
+    .phone-wrapper {
+      position: relative;
+      width: 320px;
+      max-width: 100%;
+    }
+    .phone-frame {
+      width: 100%;
+      aspect-ratio: 9/19.5;
+      background: var(--bg-elev);
+      border-radius: 40px;
+      border: 3px solid var(--border);
+      overflow: hidden;
+      position: relative;
+      box-shadow:
+        0 0 0 6px #161616,
+        0 0 0 8px #2A2A2A,
+        0 30px 80px rgba(0,0,0,.7);
+    }
+    /* Notch */
+    .phone-frame::before {
+      content: '';
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      width: 80px; height: 8px;
+      background: #0A0A0A;
+      border-radius: 4px;
+      z-index: 100;
+    }
+
+    .screen {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      padding: 30px 0 0;
+      opacity: 0;
+      transition: opacity .35s ease;
+      pointer-events: none;
+    }
+    .screen.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    /* Topbar dentro del móvil */
+    .phone-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px 12px;
+      flex-shrink: 0;
+    }
+    .phone-topbar h3 {
+      font-size: 16px;
+      font-family: 'Poppins', sans-serif;
+    }
+    .phone-topbar .icon-btn {
+      font-size: 18px;
+      background: var(--bg-card);
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* =====================================================
+       PANTALLA 1 — MATCHMAKING (SWIPE)
+    ===================================================== */
+    #screen-match {
+      background: var(--bg);
+    }
+    .swipe-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      margin: 0 10px;
+    }
+    .swipe-card {
+      position: absolute; inset: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      will-change: transform;
+      transition: transform .4s cubic-bezier(.25,.46,.45,.94), opacity .4s ease;
+      cursor: grab;
+    }
+    .swipe-card:active { cursor: grabbing; }
+    .swipe-card.swipe-left {
+      transform: translateX(-130%) rotate(-25deg) !important;
+      opacity: 0;
+    }
+    .swipe-card.swipe-right {
+      transform: translateX(130%) rotate(25deg) !important;
+      opacity: 0;
+    }
+    .card-avatar-area {
+      flex: 1;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 0;
+    }
+    .card-avatar-circle {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 34px;
+      font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .card-overlay-like {
+      position: absolute; top: 16px; left: 16px;
+      background: rgba(34,197,94,.9);
+      color: #fff;
+      font-weight: 800;
+      font-size: 18px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 2px solid #22C55E;
+      opacity: 0;
+      transform: rotate(-15deg);
+      transition: opacity .15s;
+    }
+    .card-overlay-nope {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(239,68,68,.9);
+      color: #fff;
+      font-weight: 800;
+      font-size: 18px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 2px solid #EF4444;
+      opacity: 0;
+      transform: rotate(15deg);
+      transition: opacity .15s;
+    }
+    .card-info {
+      padding: 10px 14px 14px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+    }
+    .card-info-top {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 4px;
+    }
+    .card-name { font-size: 15px; font-weight: 700; }
+    .card-age { font-size: 13px; color: var(--text-muted); }
+    .card-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+    .card-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+    .swipe-btns {
+      display: flex; justify-content: center; gap: 20px;
+      padding: 10px 14px 14px;
+      flex-shrink: 0;
+    }
+    .swipe-btn {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .swipe-btn:active { transform: scale(.9); }
+    .swipe-btn.nope { background: rgba(239,68,68,.15); color: #EF4444; }
+    .swipe-btn.like { background: rgba(34,197,94,.15); color: #22C55E; }
+    .swipe-btn.nope:hover { box-shadow: 0 0 16px rgba(239,68,68,.4); }
+    .swipe-btn.like:hover { box-shadow: 0 0 16px rgba(34,197,94,.4); }
+
+    /* =====================================================
+       PANTALLA 2 — VS
+    ===================================================== */
+    #screen-vs {
+      background: linear-gradient(180deg, #0A0A0A 0%, #0d1a0e 100%);
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .vs-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .vs-row {
+      display: flex; align-items: center; gap: 0;
+      width: 100%;
+      padding: 0 14px;
+    }
+    .vs-player {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .vs-avatar {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      color: #fff;
+      border: 3px solid var(--border);
+    }
+    .vs-avatar.you { border-color: var(--accent); }
+    .vs-name { font-size: 12px; font-weight: 700; text-align: center; }
+    .vs-pts { font-size: 11px; color: var(--text-muted); }
+    .vs-badge { font-size: 10px; }
+    .vs-center {
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+      padding: 0 8px;
+    }
+    .vs-text {
+      font-family: 'Poppins', sans-serif;
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1;
+      text-shadow: 0 0 30px rgba(34,197,94,.6);
+    }
+    .sparks {
+      display: flex; gap: 3px;
+      font-size: 14px;
+      animation: sparkle 1s ease-in-out infinite;
+    }
+    @keyframes sparkle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .5; transform: scale(1.3); }
+    }
+    .vs-msg {
+      margin-top: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 220px;
+    }
+    .vs-msg strong { color: var(--text); }
+    .vs-action-btn {
+      margin-top: 16px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 12px;
+      border: none; cursor: pointer;
+    }
+
+    /* =====================================================
+       PANTALLA 3 — CHAT
+    ===================================================== */
+    #screen-chat {
+      background: var(--bg);
+    }
+    .chat-header {
+      padding: 8px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-header-row { display: flex; align-items: center; gap: 10px; }
+    .chat-small-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; font-family: 'Poppins', sans-serif; color: #fff;
+    }
+    .chat-partner-name { font-size: 14px; font-weight: 700; }
+    .chat-partner-sub  { font-size: 11px; color: var(--text-muted); }
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .msg {
+      max-width: 80%;
+      padding: 8px 11px;
+      border-radius: 14px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .msg.them {
+      align-self: flex-start;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .msg.me {
+      align-self: flex-end;
+      background: var(--accent);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg-time { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .challenge-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 4px 0;
+      max-width: 85%;
+      align-self: flex-start;
+    }
+    .challenge-card .ch-title { font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .challenge-card .ch-text  { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+    .ch-btns { display: flex; gap: 6px; }
+    .ch-btn {
+      flex: 1; padding: 6px; border-radius: 8px;
+      font-size: 11px; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      border: none; cursor: pointer;
+      transition: transform .1s;
+    }
+    .ch-btn:active { transform: scale(.95); }
+    .ch-btn.accept { background: var(--accent); color: #fff; }
+    .ch-btn.reject { background: rgba(239,68,68,.15); color: #EF4444; border: 1px solid rgba(239,68,68,.3); }
+
+    .chat-input-row {
+      flex-shrink: 0;
+      display: flex; gap: 6px;
+      padding: 8px 10px;
+      border-top: 1px solid var(--border);
+    }
+    .chat-input-fake {
+      flex: 1; background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .chat-send {
+      background: var(--accent); border: none;
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; cursor: pointer;
+    }
+
+    /* =====================================================
+       PANTALLA 4 — RANKING
+    ===================================================== */
+    #screen-ranking {
+      background: var(--bg);
+    }
+    .ranking-scroll { flex: 1; overflow-y: auto; padding: 0 10px 10px; }
+    .ranking-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      margin-bottom: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      transition: background .2s;
+    }
+    .ranking-row.me-row { border-color: var(--accent); background: rgba(34,197,94,.06); }
+    .ranking-row.top1 { border-color: #CA8A04; }
+    .rank-pos { width: 22px; font-size: 12px; font-weight: 700; text-align: center; flex-shrink: 0; }
+    .rank-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+      font-family: 'Poppins', sans-serif; color: #fff; flex-shrink: 0;
+    }
+    .rank-info { flex: 1; min-width: 0; }
+    .rank-name { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rank-sub  { font-size: 10px; color: var(--text-muted); }
+    .rank-pts  { font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+
+    /* =====================================================
+       PANTALLA 5 — PERFIL
+    ===================================================== */
+    #screen-profile {
+      background: var(--bg);
+    }
+    .profile-scroll { flex: 1; overflow-y: auto; padding: 0 10px 10px; }
+    .profile-header {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 10px 0 12px;
+      gap: 6px;
+    }
+    .profile-big-avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: 700;
+      font-family: 'Poppins', sans-serif; color: #fff;
+      border: 3px solid var(--accent);
+    }
+    .profile-name  { font-size: 16px; font-weight: 700; }
+    .profile-rank-label { font-size: 12px; }
+    .profile-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 6px; margin-bottom: 8px;
+    }
+    .stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 6px;
+      text-align: center;
+    }
+    .stat-val { font-size: 18px; font-weight: 700; color: var(--accent); }
+    .stat-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .progress-section { margin-bottom: 8px; }
+    .progress-label {
+      display: flex; justify-content: space-between;
+      font-size: 11px; margin-bottom: 4px;
+    }
+    .progress-bar {
+      height: 6px; background: var(--bg-elev);
+      border-radius: 3px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: var(--accent);
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+
+    .logros-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+    .logros-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+    .logro-badge {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 11px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .logro-badge.locked { opacity: .3; }
+
+    /* =====================================================
+       PANTALLA 6 — FINAL (countdown)
+    ===================================================== */
+    #screen-final {
+      background: linear-gradient(180deg, #0A0A0A 0%, #071209 100%);
+      align-items: center; justify-content: center;
+      padding: 30px 14px 14px;
+      gap: 8px;
+    }
+    .final-logo-icon {
+      width: 52px; height: 52px;
+      background: var(--accent);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 24px rgba(34,197,94,.5);
+    }
+    .final-name {
+      font-family: 'Poppins', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+    }
+    .final-name span { color: var(--accent); }
+    .final-dev-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+    }
+    .final-date {
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .countdown-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      width: 100%;
+    }
+    .cd-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 4px;
+      text-align: center;
+    }
+    .cd-val {
+      font-family: 'Poppins', sans-serif;
+      font-size: 22px; font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .cd-lbl {
+      font-size: 9px; color: var(--text-muted);
+      margin-top: 2px; text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* =====================================================
+       TEXTO EXPLICATIVO ENCIMA DEL MÓVIL
+    ===================================================== */
+    .screen-caption {
+      text-align: center;
+      max-width: 320px;
+      margin-bottom: 20px;
+    }
+    .screen-caption h3 {
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+    .screen-caption p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Indicadores de pantalla */
+    .screen-dots {
+      display: flex; gap: 7px; margin-top: 24px;
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--border);
+      transition: background .3s, transform .3s;
+    }
+    .dot.active {
+      background: var(--accent);
+      transform: scale(1.4);
+    }
+
+    /* Botón siguiente */
+    .next-btn {
+      margin-top: 16px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+    .next-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* =====================================================
+       BOTTOM NAV DEL TELÉFONO
+    ===================================================== */
+    .phone-bottom-nav {
+      flex-shrink: 0;
+      height: 52px;
+      background: var(--bg-elev);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-around;
+    }
+    .pbn-item {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-size: 8px; color: var(--text-muted); font-weight: 600; flex: 1;
+    }
+    .pbn-item .pbn-icon { font-size: 16px; }
+    .pbn-item.active { color: var(--accent); }
+
+    /* =====================================================
+       FORMULARIO LISTA DE ESPERA
+    ===================================================== */
+    .waitlist-section {
+      padding: 80px 24px;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center;
+    }
+    .waitlist-section h2 {
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      letter-spacing: -1px;
+      margin-bottom: 12px;
+    }
+    .waitlist-section p {
+      color: var(--text-muted);
+      max-width: 420px;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+    .waitlist-form {
+      display: flex; gap: 10px;
+      width: 100%; max-width: 440px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .waitlist-form input {
+      flex: 1; min-width: 220px;
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 15px 18px;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .waitlist-form input:focus { border-color: var(--accent); }
+    .waitlist-form input::placeholder { color: var(--text-muted); }
+
+    .success-msg {
+      display: none;
+      flex-direction: column; align-items: center; gap: 10px;
+      padding: 24px;
+      background: rgba(34,197,94,.08);
+      border: 1.5px solid rgba(34,197,94,.3);
+      border-radius: 18px;
+      max-width: 440px;
+      animation: fadeInUp .4s ease;
+    }
+    .success-msg.show { display: flex; }
+    .success-icon { font-size: 36px; }
+    .success-msg h3 { font-size: 18px; color: var(--accent); }
+    .success-msg p  { font-size: 14px; color: var(--text-muted); }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Contador de inscritos */
+    .inscribed-count {
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .inscribed-count strong { color: var(--text); }
+
+    /* =====================================================
+       FOOTER
+    ===================================================== */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    footer a { color: var(--accent); }
+
+    /* =====================================================
+       RESPONSIVE
+    ===================================================== */
+    @media (max-width: 400px) {
+      .phone-wrapper { width: 290px; }
+    }
+    @media (min-width: 700px) {
+      .phone-wrapper { width: 340px; }
+    }
+
+    /* Glow animado hero */
+    @keyframes heroGlow {
+      0%, 100% { opacity: .18; }
+      50%       { opacity: .28; }
+    }
+    .hero::before { animation: heroGlow 4s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+<!-- ====================================================
+     1. HERO
+==================================================== -->
+<section class="hero" id="hero">
+  <div class="hero-logo">
+    <div class="hero-logo-icon">🎾</div>
+    <div class="hero-logo-name">Meet<span>Racquet</span></div>
+  </div>
+
+  <h1>El <em>Tinder</em> del<br/>tenis y el pádel</h1>
+  <p class="subtitle">
+    Encuentra rivales de tu nivel, lánzales un desafío y escala en el ranking.
+    Todo desde el móvil, en segundos.
+  </p>
+
+  <div class="hero-chips">
+    <span class="chip green">🎾 Tenis</span>
+    <span class="chip green">🏸 Pádel</span>
+    <span class="chip">🏆 Ranking en tiempo real</span>
+    <span class="chip">⚡ Matchmaking inteligente</span>
+    <span class="chip">💬 Desafíos directos</span>
+  </div>
+
+  <button class="btn-primary" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">
+    🚀 Quiero ser el primero
+  </button>
+</section>
+
+<!-- ====================================================
+     2. DEMO INTERACTIVA
+==================================================== -->
+<section class="demo-section" id="demo">
+  <div class="section-label">Demo interactiva</div>
+  <h2>Así funciona la app</h2>
+  <p class="desc">Navega por las pantallas y descubre cómo MeetRacquet te conecta con tu rival perfecto.</p>
+
+  <!-- Texto descriptivo de cada pantalla -->
+  <div class="screen-caption" id="caption-0">
+    <h3>🃏 Descubre rivales cerca de ti</h3>
+    <p>Desliza para encontrar jugadores de tu nivel. A la derecha para desafiar, a la izquierda para pasar.</p>
+  </div>
+  <div class="screen-caption" id="caption-1" style="display:none">
+    <h3>⚔️ ¡Estás listo para el duelo!</h3>
+    <p>Al desafiar a alguien se genera una pantalla de enfrentamiento con vuestros rangos y stats.</p>
+  </div>
+  <div class="screen-caption" id="caption-2" style="display:none">
+    <h3>💬 Chat de desafío</h3>
+    <p>El rival recibe el desafío automáticamente. Solo tiene que aceptar o rechazar.</p>
+  </div>
+  <div class="screen-caption" id="caption-3" style="display:none">
+    <h3>📊 Ranking en vivo</h3>
+    <p>Cada partido suma o resta puntos. Escala desde Novato hasta Leyenda.</p>
+  </div>
+  <div class="screen-caption" id="caption-4" style="display:none">
+    <h3>👤 Tu perfil y logros</h3>
+    <p>Consulta tus stats, desbloquea logros y ve cuánto te falta para el siguiente rango.</p>
+  </div>
+  <div class="screen-caption" id="caption-5" style="display:none">
+    <h3>⏳ Pronto disponible</h3>
+    <p>La app llega el 27 de julio. Apúntate para ser de los primeros en entrar.</p>
+  </div>
+
+  <!-- Marco del teléfono -->
+  <div class="phone-wrapper">
+    <div class="phone-frame" id="phone">
+
+      <!-- PANTALLA 0: MATCHMAKING -->
+      <div class="screen active" id="screen-match">
+        <div class="phone-topbar">
+          <h3>Matchmaking</h3>
+          <div class="icon-btn">🔍</div>
+        </div>
+        <div class="swipe-area" id="swipe-area">
+          <!-- Las cartas se generan con JS -->
+        </div>
+        <div class="swipe-btns">
+          <button class="swipe-btn nope" onclick="doSwipe('left')">✕</button>
+          <button class="swipe-btn like" onclick="doSwipe('right')">🎾</button>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="pbn-item active"><div class="pbn-icon">🃏</div>Match</div>
+          <div class="pbn-item"><div class="pbn-icon">💬</div>Chat</div>
+          <div class="pbn-item"><div class="pbn-icon">🏆</div>Ranking</div>
+          <div class="pbn-item"><div class="pbn-icon">👤</div>Perfil</div>
+        </div>
+      </div>
+
+      <!-- PANTALLA 1: VS -->
+      <div class="screen" id="screen-vs" style="padding-top:30px;padding-bottom:0;gap:10px;">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 14px;">
+          <div class="vs-title">DESAFÍO ENVIADO</div>
+          <div class="vs-row">
+            <div class="vs-player">
+              <div class="vs-avatar you" style="background:#22C55E;">TÚ</div>
+              <div class="vs-name">Tu perfil</div>
+              <div class="vs-pts">987 pts</div>
+              <span class="badge-rank" style="background:rgba(202,138,4,.15);color:#CA8A04;font-size:10px;">🟡 Consistente</span>
+            </div>
+            <div class="vs-center">
+              <div class="vs-text">VS</div>
+              <div class="sparks">⚡✨⚡</div>
+            </div>
+            <div class="vs-player">
+              <div class="vs-avatar" style="background:#9333EA;">J</div>
+              <div class="vs-name">Javier García</div>
+              <div class="vs-pts">1.362 pts</div>
+              <span class="badge-rank" style="background:rgba(202,138,4,.15);color:#CA8A04;font-size:10px;">🟡 Consistente</span>
+            </div>
+          </div>
+          <div class="vs-msg">
+            <strong>¡Rival encontrado!</strong><br/>
+            Tu desafío se envía automáticamente por chat. Espera su respuesta.
+          </div>
+          <button class="vs-action-btn" onclick="goToScreen(2)">Ver chat →</button>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="pbn-item"><div class="pbn-icon">🃏</div>Match</div>
+          <div class="pbn-item active"><div class="pbn-icon">💬</div>Chat</div>
+          <div class="pbn-item"><div class="pbn-icon">🏆</div>Ranking</div>
+          <div class="pbn-item"><div class="pbn-icon">👤</div>Perfil</div>
+        </div>
+      </div>
+
+      <!-- PANTALLA 2: CHAT -->
+      <div class="screen" id="screen-chat">
+        <div class="chat-header">
+          <div class="chat-header-row">
+            <div class="chat-small-avatar" style="background:#5b21b6;">J</div>
+            <div>
+              <div class="chat-partner-name">Javier García</div>
+              <div class="chat-partner-sub">🟡 Consistente · 1.362 pts</div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-messages">
+          <div class="msg them">¡Hola! Vi tu perfil en el ranking 👋</div>
+          <div class="msg me">¡Ey Javier! ¿Partida esta semana?</div>
+          <div class="challenge-card">
+            <div class="ch-title">🎾 DESAFÍO RECIBIDO</div>
+            <div class="ch-text">Tu perfil te desafía a un partido de tenis. ¿Aceptas el reto?</div>
+            <div class="ch-btns">
+              <button class="ch-btn accept" onclick="acceptChallenge()">✓ Aceptar</button>
+              <button class="ch-btn reject" onclick="rejectChallenge()">✕ Rechazar</button>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <div class="chat-input-fake">Escribe un mensaje...</div>
+          <button class="chat-send">↑</button>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="pbn-item"><div class="pbn-icon">🃏</div>Match</div>
+          <div class="pbn-item active"><div class="pbn-icon">💬</div>Chat</div>
+          <div class="pbn-item"><div class="pbn-icon">🏆</div>Ranking</div>
+          <div class="pbn-item"><div class="pbn-icon">👤</div>Perfil</div>
+        </div>
+      </div>
+
+      <!-- PANTALLA 3: RANKING -->
+      <div class="screen" id="screen-ranking">
+        <div class="phone-topbar">
+          <h3>Ranking</h3>
+          <div class="icon-btn">🌍</div>
+        </div>
+        <div class="ranking-scroll" id="ranking-list">
+          <!-- generado por JS -->
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="pbn-item"><div class="pbn-icon">🃏</div>Match</div>
+          <div class="pbn-item"><div class="pbn-icon">💬</div>Chat</div>
+          <div class="pbn-item active"><div class="pbn-icon">🏆</div>Ranking</div>
+          <div class="pbn-item"><div class="pbn-icon">👤</div>Perfil</div>
+        </div>
+      </div>
+
+      <!-- PANTALLA 4: PERFIL -->
+      <div class="screen" id="screen-profile">
+        <div class="phone-topbar">
+          <h3>Mi perfil</h3>
+          <div class="icon-btn">⚙️</div>
+        </div>
+        <div class="profile-scroll">
+          <div class="profile-header">
+            <div class="profile-big-avatar" style="background:#22C55E;">TÚ</div>
+            <div class="profile-name">Tu perfil</div>
+            <span class="badge-rank profile-rank-label" style="background:rgba(202,138,4,.15);color:#CA8A04;">🟡 Consistente · 987 pts</span>
+          </div>
+          <div class="profile-stats">
+            <div class="stat-box"><div class="stat-val">24</div><div class="stat-lbl">Partidos</div></div>
+            <div class="stat-box"><div class="stat-val">16</div><div class="stat-lbl">Victorias</div></div>
+            <div class="stat-box"><div class="stat-val">🔥3</div><div class="stat-lbl">Racha</div></div>
+          </div>
+          <div class="progress-section">
+            <div class="progress-label">
+              <span style="font-size:11px;color:var(--text-muted)">🟡 Consistente</span>
+              <span style="font-size:11px;color:var(--text-muted)">🟢 Competidor</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="rank-progress" style="width:0%"></div></div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-align:right">987 / 3.000 pts</div>
+          </div>
+          <div class="logros-title">🏅 Logros</div>
+          <div class="logros-grid">
+            <div class="logro-badge">🔥 En racha</div>
+            <div class="logro-badge">💪 Veterano</div>
+            <div class="logro-badge">⚡ Activo</div>
+            <div class="logro-badge">🎯 Desafiador</div>
+            <div class="logro-badge locked">👑 Top 10</div>
+            <div class="logro-badge locked">🏆 Invicto</div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="pbn-item"><div class="pbn-icon">🃏</div>Match</div>
+          <div class="pbn-item"><div class="pbn-icon">💬</div>Chat</div>
+          <div class="pbn-item"><div class="pbn-icon">🏆</div>Ranking</div>
+          <div class="pbn-item active"><div class="pbn-icon">👤</div>Perfil</div>
+        </div>
+      </div>
+
+      <!-- PANTALLA 5: FINAL / COUNTDOWN -->
+      <div class="screen" id="screen-final">
+        <div class="final-logo-icon">🎾</div>
+        <div class="final-name">Meet<span>Racquet</span></div>
+        <div class="final-dev-label">App en desarrollo</div>
+        <div class="final-date">📅 Disponible el 27 de julio de 2026</div>
+        <div class="countdown-grid">
+          <div class="cd-box"><div class="cd-val" id="cd-d">--</div><div class="cd-lbl">Días</div></div>
+          <div class="cd-box"><div class="cd-val" id="cd-h">--</div><div class="cd-lbl">Horas</div></div>
+          <div class="cd-box"><div class="cd-val" id="cd-m">--</div><div class="cd-lbl">Min</div></div>
+          <div class="cd-box"><div class="cd-val" id="cd-s">--</div><div class="cd-lbl">Seg</div></div>
+        </div>
+        <button class="btn-primary" style="font-size:13px;padding:12px 20px;margin-top:4px;" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">
+          🚀 Únete a la lista
+        </button>
+      </div>
+
+    </div><!-- /phone-frame -->
+  </div><!-- /phone-wrapper -->
+
+  <!-- Dots + botón siguiente -->
+  <div class="screen-dots" id="dots">
+    <div class="dot active"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+  <button class="next-btn" id="next-btn" onclick="nextScreen()">Siguiente →</button>
+</section>
+
+<!-- ====================================================
+     4. FORMULARIO LISTA DE ESPERA
+==================================================== -->
+<section class="waitlist-section" id="waitlist">
+  <h2>Sé el primero en entrar 🚀</h2>
+  <p>La app llega el <strong style="color:var(--text)">27 de julio de 2026</strong>. Déjanos tu email y te avisamos el día del lanzamiento — sin spam, prometido.</p>
+
+  <form class="waitlist-form" id="waitlist-form" onsubmit="submitWaitlist(event)">
+    <input type="email" id="email-input" placeholder="tu@email.com" required autocomplete="email" />
+    <button type="submit" class="btn-primary">Únete a la lista</button>
+  </form>
+
+  <div class="success-msg" id="success-msg">
+    <div class="success-icon">🎾</div>
+    <h3>¡Ya estás dentro!</h3>
+    <p>Te avisamos el 27 de julio.<br/>Prepara la raqueta. 🏆</p>
+  </div>
+
+  <div class="inscribed-count" id="inscribed-count" style="display:none">
+    <strong id="count-num">--</strong> personas ya están en la lista de espera
+  </div>
+</section>
+
+<!-- ====================================================
+     5. FOOTER
+==================================================== -->
+<footer>
+  <p>© 2026 MeetRacquet · España</p>
+  <p style="margin-top:8px;font-size:12px;">
+    Web creada por <a href="https://novuweb.es/" target="_blank" rel="noopener">novu</a>
+  </p>
+</footer>
+
+<!-- ====================================================
+     JAVASCRIPT
+==================================================== -->
+<script>
+  // ──────────────────────────────────────────────────
+  // CONFIGURACIÓN — pega aquí tu API key de Brevo
+  // ──────────────────────────────────────────────────
+  const BREVO_API_KEY = ''; // ← TU API KEY DE BREVO AQUÍ
+  const BREVO_LIST_ID  = 3; // ← ID de tu lista en Brevo (entero)
+
+  // ──────────────────────────────────────────────────
+  // DATOS DE PERFILES PARA LA DEMO
+  // ──────────────────────────────────────────────────
+  const PERFILES = [
+    { nombre: 'Valeria H.', edad: 23, deporte: 'Ambos',  nivel: 'Intermedio',   puntos: 1534, color: '#7c3aed', victorias: 11, partidos: 31 },
+    { nombre: 'Javier G.',  edad: 20, deporte: 'Tenis',  nivel: 'Avanzado',     puntos: 1362, color: '#5b21b6', victorias: 26, partidos: 27 },
+    { nombre: 'Inés H.',    edad: 25, deporte: 'Ambos',  nivel: 'Avanzado',     puntos: 1827, color: '#b45309', victorias: 12, partidos: 22 },
+    { nombre: 'Claudia A.', edad: 22, deporte: 'Tenis',  nivel: 'Intermedio',   puntos: 1731, color: '#0369a1', victorias:  7, partidos: 35 },
+    { nombre: 'Aythami G.', edad: 22, deporte: 'Tenis',  nivel: 'Intermedio',   puntos: 1556, color: '#065f46', victorias:  6, partidos: 24 },
+    { nombre: 'Andrea P.',  edad: 19, deporte: 'Pádel',  nivel: 'Principiante', puntos: 2001, color: '#9f1239', victorias:  6, partidos: 31 },
+  ];
+
+  const RANGOS = [
+    { id: 'novato',      nombre: 'Novato',      icono: '🟤', min: 0,     max: 499,  color: '#92400E', bg: 'rgba(146,64,14,.15)' },
+    { id: 'calentando',  nombre: 'Calentando',  icono: '🟠', min: 500,   max: 1499, color: '#EA580C', bg: 'rgba(234,88,12,.15)' },
+    { id: 'consistente', nombre: 'Consistente', icono: '🟡', min: 1500,  max: 2999, color: '#CA8A04', bg: 'rgba(202,138,4,.15)' },
+    { id: 'competidor',  nombre: 'Competidor',  icono: '🟢', min: 3000,  max: 5499, color: '#16A34A', bg: 'rgba(22,163,74,.15)'  },
+    { id: 'elite',       nombre: 'Élite',       icono: '🔵', min: 5500,  max: 9999, color: '#2563EB', bg: 'rgba(37,99,235,.15)'  },
+    { id: 'leyenda',     nombre: 'Leyenda',     icono: '🟣', min: 10000, max: Infinity, color: '#9333EA', bg: 'rgba(147,51,234,.15)' },
+  ];
+
+  function getRango(pts) {
+    return RANGOS.find(r => pts >= r.min && pts <= r.max) || RANGOS[0];
+  }
+
+  // ──────────────────────────────────────────────────
+  // SWIPE CARDS
+  // ──────────────────────────────────────────────────
+  let cardIndex = 0;
+
+  function buildCards() {
+    const area = document.getElementById('swipe-area');
+    area.innerHTML = '';
+    // Renderizar en orden inverso para que el primero quede arriba
+    [...PERFILES].reverse().forEach((p, ri) => {
+      const i = PERFILES.length - 1 - ri;
+      const rango = getRango(p.puntos);
+      const iniciales = p.nombre.split(' ').map(w => w[0]).join('').slice(0, 2);
+      const pct = Math.round((p.victorias / (p.partidos || 1)) * 100);
+      const card = document.createElement('div');
+      card.className = 'swipe-card';
+      card.id = `card-${i}`;
+      card.style.cssText = `z-index:${i};`;
+      card.innerHTML = `
+        <div class="card-avatar-area">
+          <div class="card-overlay-like" id="like-${i}">RETO ✓</div>
+          <div class="card-overlay-nope" id="nope-${i}">PASO ✕</div>
+          <div class="card-avatar-circle" style="background:${p.color}">${iniciales}</div>
+        </div>
+        <div class="card-info">
+          <div class="card-info-top">
+            <span class="card-name">${p.nombre}, ${p.edad}</span>
+            <span class="card-age">${p.puntos} pts</span>
+          </div>
+          <div class="card-badges">
+            <span class="badge-rank" style="background:${rango.bg};color:${rango.color}">${rango.icono} ${rango.nombre}</span>
+            <span style="font-size:11px;color:var(--text-muted);padding:3px 7px;background:var(--bg-elev);border-radius:20px;border:1px solid var(--border)">${p.deporte}</span>
+          </div>
+          <div class="card-desc">${pct}% victorias · ${p.partidos} partidos · ${p.nivel}</div>
+        </div>`;
+      // Touch/mouse drag
+      attachSwipeListeners(card, i);
+      area.appendChild(card);
+    });
+    cardIndex = 0;
+  }
+
+  function attachSwipeListeners(card, idx) {
+    let startX = 0, currX = 0, dragging = false;
+
+    const onStart = (e) => {
+      if (idx !== getCurrentTopCard()) return;
+      dragging = true;
+      startX = e.touches ? e.touches[0].clientX : e.clientX;
+      card.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (!dragging) return;
+      currX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
+      const rot = currX * 0.08;
+      card.style.transform = `translateX(${currX}px) rotate(${rot}deg)`;
+      const likeEl = document.getElementById(`like-${idx}`);
+      const nopeEl = document.getElementById(`nope-${idx}`);
+      if (currX > 30)  { likeEl.style.opacity = Math.min(1, (currX - 30) / 60); nopeEl.style.opacity = 0; }
+      else if (currX < -30) { nopeEl.style.opacity = Math.min(1, (-currX - 30) / 60); likeEl.style.opacity = 0; }
+      else { likeEl.style.opacity = 0; nopeEl.style.opacity = 0; }
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      card.style.transition = '';
+      if (currX > 80)       { triggerSwipe(idx, 'right'); }
+      else if (currX < -80) { triggerSwipe(idx, 'left'); }
+      else {
+        card.style.transform = '';
+        document.getElementById(`like-${idx}`).style.opacity = 0;
+        document.getElementById(`nope-${idx}`).style.opacity = 0;
+      }
+      currX = 0;
+    };
+
+    card.addEventListener('mousedown',  onStart);
+    card.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove',  onMove, { passive: true });
+    window.addEventListener('mouseup',  onEnd);
+    window.addEventListener('touchend',  onEnd);
+  }
+
+  function getCurrentTopCard() {
+    return cardIndex;
+  }
+
+  function triggerSwipe(idx, dir) {
+    const card = document.getElementById(`card-${idx}`);
+    if (!card) return;
+    card.classList.add(dir === 'right' ? 'swipe-right' : 'swipe-left');
+    if (dir === 'right') {
+      playSwingSound();
+      // Tras swipe derecha, pasar a pantalla VS
+      setTimeout(() => goToScreen(1), 500);
+    } else {
+      playMissSound();
+      cardIndex++;
+      if (cardIndex >= PERFILES.length) {
+        cardIndex = 0;
+        setTimeout(buildCards, 600);
+      }
+    }
+  }
+
+  function doSwipe(dir) {
+    triggerSwipe(cardIndex, dir);
+  }
+
+  // ──────────────────────────────────────────────────
+  // NAVEGACIÓN DE PANTALLAS
+  // ──────────────────────────────────────────────────
+  const SCREENS = ['screen-match','screen-vs','screen-chat','screen-ranking','screen-profile','screen-final'];
+  const CAPTIONS = ['caption-0','caption-1','caption-2','caption-3','caption-4','caption-5'];
+  let currentScreen = 0;
+
+  function goToScreen(n) {
+    SCREENS.forEach((id, i) => {
+      document.getElementById(id).classList.toggle('active', i === n);
+    });
+    CAPTIONS.forEach((id, i) => {
+      document.getElementById(id).style.display = i === n ? '' : 'none';
+    });
+    document.querySelectorAll('#dots .dot').forEach((d, i) => d.classList.toggle('active', i === n));
+    currentScreen = n;
+
+    const btn = document.getElementById('next-btn');
+    if (n === SCREENS.length - 1) {
+      btn.textContent = '↑ Únete a la lista';
+      btn.onclick = () => document.getElementById('waitlist').scrollIntoView({behavior:'smooth'});
+    } else {
+      btn.textContent = 'Siguiente →';
+      btn.onclick = nextScreen;
+    }
+
+    // Activar barra de progreso del perfil al llegar a esa pantalla
+    if (n === 4) {
+      setTimeout(() => {
+        document.getElementById('rank-progress').style.width = '33%';
+      }, 300);
+    }
+  }
+
+  function nextScreen() {
+    const next = (currentScreen + 1) % SCREENS.length;
+    goToScreen(next);
+  }
+
+  // ──────────────────────────────────────────────────
+  // CHAT — ACEPTAR / RECHAZAR DESAFÍO
+  // ──────────────────────────────────────────────────
+  function acceptChallenge() {
+    const msgs = document.querySelector('.chat-messages');
+    const challengeCard = document.querySelector('.challenge-card');
+    if (challengeCard) {
+      challengeCard.innerHTML = '<div class="ch-title" style="color:var(--accent)">✓ DESAFÍO ACEPTADO</div><div class="ch-text" style="color:var(--text)">¡Nos vemos en la pista! 🎾</div>';
+    }
+    const msg = document.createElement('div');
+    msg.className = 'msg them';
+    msg.textContent = '¡Aceptado! ¿Quedamos el sábado a las 10h?';
+    msgs.appendChild(msg);
+    msgs.scrollTop = msgs.scrollHeight;
+    playAcceptSound();
+    setTimeout(() => goToScreen(3), 1200);
+  }
+
+  function rejectChallenge() {
+    const challengeCard = document.querySelector('.challenge-card');
+    if (challengeCard) {
+      challengeCard.innerHTML = '<div class="ch-title" style="color:#EF4444">✕ DESAFÍO RECHAZADO</div><div class="ch-text">Quizás en otra ocasión…</div>';
+    }
+    playMissSound();
+    setTimeout(() => goToScreen(0), 1000);
+  }
+
+  // ──────────────────────────────────────────────────
+  // RANKING
+  // ──────────────────────────────────────────────────
+  function buildRanking() {
+    const data = [
+      { nombre: 'Inés H.',     puntos: 1827, color: '#b45309', me: false },
+      { nombre: 'Andrea P.',   puntos: 2001, color: '#9f1239', me: false },
+      { nombre: 'Claudia A.',  puntos: 1731, color: '#0369a1', me: false },
+      { nombre: 'Tú',          puntos: 1556, color: '#22C55E', me: true  },
+      { nombre: 'Aythami G.',  puntos: 1541, color: '#065f46', me: false },
+      { nombre: 'Valeria H.',  puntos: 1534, color: '#7c3aed', me: false },
+      { nombre: 'Javier G.',   puntos: 1362, color: '#5b21b6', me: false },
+      { nombre: 'Airam M.',    puntos: 1285, color: '#0e7490', me: false },
+    ].sort((a, b) => b.puntos - a.puntos);
+
+    const list = document.getElementById('ranking-list');
+    const medallas = ['🥇','🥈','🥉'];
+    data.forEach((p, i) => {
+      const rango = getRango(p.puntos);
+      const iniciales = p.nombre.split(' ').map(w => w[0]).join('').slice(0, 2);
+      const row = document.createElement('div');
+      row.className = 'ranking-row' + (p.me ? ' me-row' : '') + (i === 0 ? ' top1' : '');
+      row.innerHTML = `
+        <div class="rank-pos">${medallas[i] || (i+1)}</div>
+        <div class="rank-avatar" style="background:${p.color}">${iniciales}</div>
+        <div class="rank-info">
+          <div class="rank-name">${p.nombre}${p.me ? ' 👈' : ''}</div>
+          <div class="rank-sub"><span style="background:${rango.bg};color:${rango.color};padding:1px 6px;border-radius:20px;font-size:10px">${rango.icono} ${rango.nombre}</span></div>
+        </div>
+        <div class="rank-pts">${p.puntos.toLocaleString('es')}</div>`;
+      list.appendChild(row);
+    });
+  }
+
+  // ──────────────────────────────────────────────────
+  // COUNTDOWN
+  // ──────────────────────────────────────────────────
+  function updateCountdown() {
+    const target = new Date('2026-07-27T00:00:00');
+    const now    = new Date();
+    const diff   = target - now;
+    if (diff <= 0) {
+      ['cd-d','cd-h','cd-m','cd-s'].forEach(id => document.getElementById(id).textContent = '00');
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000)  / 60000);
+    const s = Math.floor((diff % 60000)    / 1000);
+    document.getElementById('cd-d').textContent = String(d).padStart(2,'0');
+    document.getElementById('cd-h').textContent = String(h).padStart(2,'0');
+    document.getElementById('cd-m').textContent = String(m).padStart(2,'0');
+    document.getElementById('cd-s').textContent = String(s).padStart(2,'0');
+  }
+
+  // ──────────────────────────────────────────────────
+  // WEB AUDIO API — sonidos sintéticos
+  // ──────────────────────────────────────────────────
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+
+  function getCtx() {
+    if (!audioCtx) audioCtx = new AudioCtx();
+    return audioCtx;
+  }
+
+  function playSwingSound() {
+    try {
+      const ctx = getCtx();
+      // Sonido de golpe de raqueta: ruido corto + tono
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.18, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.04));
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.5, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      src.connect(gain); gain.connect(ctx.destination);
+      src.start();
+
+      // Tono de acierro
+      const osc = ctx.createOscillator();
+      const gOsc = ctx.createGain();
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+      gOsc.gain.setValueAtTime(0.3, ctx.currentTime);
+      gOsc.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(gOsc); gOsc.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.25);
+    } catch(e) {}
+  }
+
+  function playMissSound() {
+    try {
+      const ctx = getCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.22);
+    } catch(e) {}
+  }
+
+  function playAcceptSound() {
+    try {
+      const ctx = getCtx();
+      [0, 0.1, 0.2].forEach((t, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = [523, 659, 784][i];
+        gain.gain.setValueAtTime(0.25, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.2);
+      });
+    } catch(e) {}
+  }
+
+  // ──────────────────────────────────────────────────
+  // FORMULARIO BREVO
+  // ──────────────────────────────────────────────────
+  async function submitWaitlist(e) {
+    e.preventDefault();
+    const email = document.getElementById('email-input').value.trim();
+    if (!email) return;
+
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+
+    if (BREVO_API_KEY) {
+      try {
+        await fetch('https://api.brevo.com/v3/contacts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': BREVO_API_KEY,
+          },
+          body: JSON.stringify({
+            email,
+            listIds: [BREVO_LIST_ID],
+            updateEnabled: true,
+            attributes: { SOURCE: 'landing_meetracquet' },
+          }),
+        });
+      } catch(err) { console.warn('Brevo error:', err); }
+    }
+
+    // Mostrar mensaje de éxito siempre (aunque no haya API key configurada)
+    document.getElementById('waitlist-form').style.display = 'none';
+    document.getElementById('success-msg').classList.add('show');
+    playAcceptSound();
+
+    // Simular contador
+    const countEl = document.getElementById('inscribed-count');
+    const numEl   = document.getElementById('count-num');
+    countEl.style.display = '';
+    let n = 47 + Math.floor(Math.random() * 10);
+    numEl.textContent = n;
+    setTimeout(() => { numEl.textContent = ++n; }, 2000);
+  }
+
+  // ──────────────────────────────────────────────────
+  // INIT
+  // ──────────────────────────────────────────────────
+  buildCards();
+  buildRanking();
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+</script>
+
+</body>
+</html>

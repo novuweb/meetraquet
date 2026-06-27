@@ -39,3 +39,22 @@ export function sonidoPasar() {
   tono({ freq: 300, freqFinal: 120, duracion: 0.18, tipo: 'sine', volInicial: 0.12 });
   if (navigator.vibrate) navigator.vibrate(20);
 }
+
+// Ding ascendente para contador de puntos
+export function playDing() {
+  try {
+    const c = getCtx();
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.frequency.setValueAtTime(880, c.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, c.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.3, c.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.4);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start();
+    osc.stop(c.currentTime + 0.4);
+  } catch {
+    // ignorado
+  }
+}

@@ -95,6 +95,9 @@ export default function Onboarding() {
 
   return (
     <div className="page">
+      <div style={{ textAlign: 'center', marginBottom: 20 }}>
+        <img src="/logo-mr.png" alt="MeetRacquet" style={{ height: 56, margin: '0 auto 8px' }} />
+      </div>
       <h1 className="page-title">Completa tu perfil</h1>
       <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 14 }}>
         Esta información es la que verán los demás jugadores antes de desafiarte.
@@ -197,7 +200,7 @@ export default function Onboarding() {
         {error && <p className="error-text">{error}</p>}
 
         <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: 10 }} disabled={cargando}>
-          {cargando ? 'Guardando...' : 'Entrar a MeetRaquet'}
+          {cargando ? 'Guardando...' : 'Entrar a MeetRacquet'}
         </button>
       </form>
     </div>
