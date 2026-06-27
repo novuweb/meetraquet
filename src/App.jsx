@@ -14,8 +14,9 @@ import Ranking from './pages/Ranking.jsx';
 import ClubsPage from './pages/ClubsPage.jsx';
 import Profile from './pages/Profile.jsx';
 import PlayerProfile from './pages/PlayerProfile.jsx';
+import PagoExitoso from './pages/PagoExitoso.jsx';
 
-const RUTAS_SIN_NAV = ['/login', '/onboarding'];
+const RUTAS_SIN_NAV = ['/login', '/onboarding', '/pago-exitoso'];
 
 export default function App() {
   useTheme(); // aplica data-theme guardado en localStorage al cargar
@@ -25,7 +26,8 @@ export default function App() {
 
   const mostrarNav = !RUTAS_SIN_NAV.some((r) => location.pathname.startsWith(r))
     && !location.pathname.startsWith('/chat/')
-    && !location.pathname.startsWith('/jugador/');
+    && !location.pathname.startsWith('/jugador/')
+    && !location.pathname.startsWith('/pago-exitoso');
 
   useEffect(() => {
     if (profile?.perfil_completo && user?.id && !tutorialYaVisto(user.id)) {
@@ -46,6 +48,7 @@ export default function App() {
           <Route path="/clubs" element={<ProtectedRoute><ClubsPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/jugador/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
+          <Route path="/pago-exitoso" element={<ProtectedRoute requireCompleteProfile={false}><PagoExitoso /></ProtectedRoute>} />
         </Routes>
       </div>
       {mostrarNav && <BottomNav />}

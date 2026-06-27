@@ -1,5 +1,10 @@
-// CONSTANTE — pega aquí tu enlace de pago de Stripe
-const STRIPE_PAYMENT_LINK = "";
+import { useAuth } from '../hooks/useAuth.jsx';
+
+// Enlace de pago de Stripe — ya configurado
+const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/4gMeVf8SUbp991VdBm4c809';
+
+// URL a la que Stripe redirige tras el pago (configura esto en el Dashboard de Stripe)
+const SUCCESS_URL = `${window.location.origin}/pago-exitoso`;
 
 const BENEFITS = [
   { text: 'Desafía a jugadores ilimitados' },
@@ -9,6 +14,7 @@ const BENEFITS = [
 ];
 
 export default function PaywallModal({ onClose }) {
+  const { user } = useAuth();
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
@@ -75,7 +81,13 @@ export default function PaywallModal({ onClose }) {
         className="btn-primary"
         style={{ width: '100%', maxWidth: '320px', fontSize: '17px', padding: '16px', borderRadius: '16px' }}
         onClick={() => {
-          if (STRIPE_PAYMENT_LINK) window.open(STRIPE_PAYMENT_LINK, '_blank');
+          // Adjuntamos el user ID como client_reference_id para que el webhook
+          // de Stripe pueda vincular el pago con el perfil del usuario
+          const params = new URLSearchParams();
+          if (user?.id) params.set('client_reference_id', user.id);
+          if (user?.email) params.set('prefilled_email', user.email);
+          const url = `${STRIPE_PAYMENT_LINK}?${params.toString()}`;
+          window.location.href = url; // misma pestaña para que SUCCESS_URL funcione
         }}
       >
         Continuar
