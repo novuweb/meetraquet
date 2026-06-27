@@ -1,55 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.jsx';
-import { supabase } from '../lib/supabaseClient';
 
 export default function PagoExitoso() {
   const navigate = useNavigate();
-  const { user, refreshProfile, loadingSession } = useAuth();
-  const [estado, setEstado] = useState('verificando');
+  const [listo, setListo] = useState(false);
 
+  // Muestra éxito a los 3 segundos sin depender de sesión ni polling
   useEffect(() => {
-    // Timeout máximo de 8 segundos — si algo falla mostramos éxito igualmente
-    // porque el webhook ya actualizó la BD aunque la sesión tarde en cargar
-    const timeout = setTimeout(async () => {
-      await refreshProfile().catch(() => {});
-      setEstado('listo');
-    }, 8000);
-
-    return () => clearTimeout(timeout);
+    const t = setTimeout(() => setListo(true), 3000);
+    return () => clearTimeout(t);
   }, []);
-
-  useEffect(() => {
-    // En cuanto tengamos el user ID, comprobamos suscrito directamente en Supabase
-    if (!user?.id) return;
-
-    let intentos = 0;
-    const MAX_INTENTOS = 8;
-
-    const intervalo = setInterval(async () => {
-      intentos++;
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('suscrito')
-          .eq('id', user.id)
-          .single();
-
-        if (data?.suscrito || intentos >= MAX_INTENTOS) {
-          clearInterval(intervalo);
-          await refreshProfile().catch(() => {});
-          setEstado('listo');
-        }
-      } catch {
-        if (intentos >= MAX_INTENTOS) {
-          clearInterval(intervalo);
-          setEstado('listo');
-        }
-      }
-    }, 1200);
-
-    return () => clearInterval(intervalo);
-  }, [user?.id]);
 
   return (
     <div style={{
@@ -57,10 +17,11 @@ export default function PagoExitoso() {
       background: 'radial-gradient(ellipse 80% 50% at 50% -10%, #0A1A0A, #0A0A0A 60%)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       justifyContent: 'center', padding: '32px 24px', gap: '20px',
+      fontFamily: 'Inter, sans-serif', color: '#fff',
     }}>
       <img src="/logo-mr.png" alt="MeetRacquet" style={{ height: '64px', marginBottom: '8px' }} />
 
-      {estado === 'verificando' && (
+      {!listo ? (
         <>
           <div style={{
             width: 48, height: 48, borderRadius: '50%',
@@ -74,21 +35,17 @@ export default function PagoExitoso() {
             Esto solo tarda unos segundos
           </p>
         </>
-      )}
-
-      {estado === 'listo' && (
+      ) : (
         <>
           <div style={{
             width: 80, height: 80, borderRadius: '50%',
             background: 'rgba(34,197,94,0.15)',
             border: '2px solid #22C55E',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '36px',
+            fontSize: '36px', color: '#22C55E',
             animation: 'popIn .4s cubic-bezier(0.175,0.885,0.32,1.275)',
             boxShadow: '0 0 40px rgba(34,197,94,0.3)',
-          }}>
-            ✓
-          </div>
+          }}>✓</div>
 
           <h1 style={{
             fontFamily: 'Poppins,sans-serif', fontSize: '30px', fontWeight: 800,
@@ -102,8 +59,7 @@ export default function PagoExitoso() {
           </p>
 
           <div style={{
-            background: 'rgba(34,197,94,0.06)',
-            border: '1px solid rgba(34,197,94,0.2)',
+            background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)',
             borderRadius: '16px', padding: '16px 20px',
             display: 'flex', flexDirection: 'column', gap: '10px',
             width: '100%', maxWidth: '320px',
@@ -116,9 +72,13 @@ export default function PagoExitoso() {
           </div>
 
           <button
-            className="btn-primary"
-            style={{ width: '100%', maxWidth: '320px', fontSize: '16px', padding: '16px', borderRadius: '16px' }}
             onClick={() => navigate('/', { replace: true })}
+            style={{
+              width: '100%', maxWidth: '320px', fontSize: '16px', padding: '16px',
+              borderRadius: '16px', background: '#22C55E', color: '#fff',
+              fontWeight: 700, border: 'none', cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+            }}
           >
             Empezar a jugar 🎾
           </button>

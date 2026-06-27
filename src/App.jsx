@@ -48,7 +48,7 @@ export default function App() {
           <Route path="/clubs" element={<ProtectedRoute><ClubsPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/jugador/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
-          <Route path="/pago-exitoso" element={<ProtectedRoute requireCompleteProfile={false}><PagoExitoso /></ProtectedRoute>} />
+          <Route path="/pago-exitoso" element={<PagoExitoso />} />
         </Routes>
       </div>
       {mostrarNav && <BottomNav />}
