@@ -140,7 +140,7 @@ export default function Onboarding() {
   const [deportes, setDeportes] = useState([]); // ['tenis', 'padel']
 
   // ── configuración de tenis ────────────────────────────────────────────────
-  const [tenisModalidad, setTenisModalidad] = useState(null); // 'individual' | 'dobles'
+  const [tenisModalidades, setTenisModalidades] = useState([]); // ['individual', 'dobles']
   const [tenisSituacion, setTenisSituacion] = useState(null); // 'tengo_pareja' | 'busco_pareja'
 
   // ── configuración de padel ────────────────────────────────────────────────
@@ -168,10 +168,15 @@ export default function Onboarding() {
   // ── helpers ───────────────────────────────────────────────────────────────
   const tieneTenis = deportes.includes('tenis');
   const tienePadel = deportes.includes('padel');
-  const tenisDobles = tieneTenis && tenisModalidad === 'dobles';
+  const tenisDobles = tieneTenis && tenisModalidades.includes('dobles');
   const hayParejaTenis = tenisDobles && tenisSituacion === 'tengo_pareja';
   const hayParejaPadel = tienePadel && padelSituacion === 'tengo_pareja';
   const necesitaJugador2 = hayParejaTenis || hayParejaPadel;
+  const tenisIndividual = tieneTenis && tenisModalidades.includes('individual');
+
+  function toggleTenisModalidad(m) {
+    setTenisModalidades((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]);
+  }
 
   function toggleDeporte(d) {
     setDeportes((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
@@ -217,7 +222,7 @@ export default function Onboarding() {
       if (deportes.length === 0) { setError('Selecciona al menos un deporte.'); return false; }
     }
     if (pantalla === 'tenis_modalidad') {
-      if (!tenisModalidad) { setError('Elige cómo juegas al tenis.'); return false; }
+      if (tenisModalidades.length === 0) { setError('Elige al menos una modalidad de tenis.'); return false; }
     }
     if (pantalla === 'tenis_situacion') {
       if (!tenisSituacion) { setError('Indica si tienes pareja o buscas una.'); return false; }
@@ -262,14 +267,15 @@ export default function Onboarding() {
       else if (tieneTenis) deporteDB = 'Tenis';
       else deporteDB = 'Pádel';
 
-      // nombre y nivel
+      // nombre y nivel (el constraint de nivel fue eliminado para permitir compuestos)
       const nombreDB = necesitaJugador2 ? `${nombre1.trim()} & ${nombre2.trim()}` : nombre1.trim();
       const nivelDB = necesitaJugador2 ? `${nivel1} / ${nivel2}` : nivel1;
 
-      // dobles_busca: prioriza padel si hay padel, si no tenis dobles
+      // dobles_busca: se aplica al modo dobles/padel
       let dobles_busca = null;
       if (hayParejaPadel || hayParejaTenis) dobles_busca = 'rival';
       else if (padelSituacion === 'busco_pareja' || tenisSituacion === 'busco_pareja') dobles_busca = 'pareja';
+      // Si solo juega individual (sin dobles ni padel) dobles_busca queda null
 
       const { error: updateErr } = await supabase.from('profiles').update({
         nombre: nombreDB,
@@ -336,24 +342,24 @@ export default function Onboarding() {
         </div>
       )}
 
-      {/* TENIS: INDIVIDUAL O DOBLES */}
+      {/* TENIS: INDIVIDUAL O DOBLES (multi-select) */}
       {pantallaActual === 'tenis_modalidad' && (
         <div>
           <p style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Tenis</p>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>¿Cómo juegas?</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>Tipo de partido que buscas en tenis.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>Puedes marcar las dos si juegas ambas modalidades.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <OpcionCard
+            <CheckCard
               titulo="Individual"
               desc="Partidos de 1 contra 1."
-              seleccionada={tenisModalidad === 'individual'}
-              onClick={() => setTenisModalidad('individual')}
+              seleccionada={tenisModalidades.includes('individual')}
+              onClick={() => toggleTenisModalidad('individual')}
             />
-            <OpcionCard
+            <CheckCard
               titulo="Dobles"
               desc="Partidos de 2 contra 2."
-              seleccionada={tenisModalidad === 'dobles'}
-              onClick={() => setTenisModalidad('dobles')}
+              seleccionada={tenisModalidades.includes('dobles')}
+              onClick={() => toggleTenisModalidad('dobles')}
             />
           </div>
           {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
