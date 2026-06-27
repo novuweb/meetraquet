@@ -100,7 +100,11 @@ export default function Matchmaking() {
   }
 
   function desafiarConPaywall(jugador) {
-    setShowPaywall(true);
+    if (profile?.suscrito) {
+      desafiar(jugador);
+    } else {
+      setShowPaywall(true);
+    }
   }
 
   async function desafiar(jugador) {
@@ -170,10 +174,10 @@ export default function Matchmaking() {
       {modo === 'tenis_dobles' && (
         <div className="chip-row" style={{ marginBottom: 16 }}>
           <button className={`chip ${doblesBusca === 'pareja' ? 'selected' : ''}`} onClick={() => cambiarDoblesBusca('pareja')}>
-            👫 Busco pareja
+            Busco pareja
           </button>
           <button className={`chip ${doblesBusca === 'rival' ? 'selected' : ''}`} onClick={() => cambiarDoblesBusca('rival')}>
-            ⚔️ Busco rival
+            Busco rival
           </button>
         </div>
       )}

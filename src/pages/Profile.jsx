@@ -109,7 +109,7 @@ export default function Profile() {
       <div className="page-header" style={{ padding: 0, marginBottom: 18 }}>
         <h1>Mi perfil</h1>
         <button onClick={toggleTheme} className="chip">
-          {theme === 'dark' ? '☀️ Claro' : '🌙 Oscuro'}
+          {theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
         </button>
       </div>
 
@@ -154,8 +154,8 @@ export default function Profile() {
 
       {(profile.valoraciones_recibidas || 0) > 0 && (
         <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', textAlign: 'center', marginBottom: 18 }}>
-          <Stat label="⭐ Deportividad" value={profile.deportividad_media} />
-          <Stat label="⏱️ Puntualidad" value={profile.puntualidad_media} />
+          <Stat label="Deportividad" value={profile.deportividad_media} />
+          <Stat label="Puntualidad" value={profile.puntualidad_media} />
         </div>
       )}
 
