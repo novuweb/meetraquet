@@ -4,13 +4,34 @@ import { getLogrosDestacados } from '../lib/achievements';
 import { ubicacionLabel } from '../lib/provincias';
 import { iconoDisponibilidad } from '../lib/disponibilidad';
 
+function Avatar({ perfil, side }) {
+  return (
+    <div style={{
+      flex: 1,
+      backgroundImage: perfil.avatar_url ? `url(${perfil.avatar_url})` : 'none',
+      backgroundColor: 'var(--bg-elev)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center top',
+      borderRight: side === 'left' ? '1px solid rgba(255,255,255,.1)' : 'none',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {!perfil.avatar_url && (
+        <span style={{ fontSize: 52, fontWeight: 800, color: 'var(--text-muted)' }}>
+          {perfil.nombre?.[0]?.toUpperCase()}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // Carta estilo Tinder con soporte de gestos táctiles (swipe) y botones.
 export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
   const [drag, setDrag] = useState({ x: 0, active: false });
   const startX = useRef(0);
 
+  const esPareja = !!jugador.jugador2;
   const rango = getRango(jugador.puntos);
-  const logros = getLogrosDestacados(jugador, 3);
+  const logros = getLogrosDestacados(esPareja ? jugador.jugador1 : jugador, 3);
 
   function handleStart(clientX) {
     if (!esTop) return;
@@ -53,18 +74,26 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
         cursor: esTop ? 'grab' : 'default',
       }}
     >
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: jugador.avatar_url ? `url(${jugador.avatar_url})` : 'none',
-        backgroundColor: 'var(--bg-elev)',
-        backgroundSize: 'cover', backgroundPosition: 'center top',
-      }}>
-        {!jugador.avatar_url && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 64, fontWeight: 800, color: 'var(--text-muted)' }}>
-            {jugador.nombre?.[0]?.toUpperCase()}
-          </div>
-        )}
-      </div>
+      {esPareja ? (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+          <Avatar perfil={jugador.jugador1} side="left" />
+          <Avatar perfil={jugador.jugador2} side="right" />
+        </div>
+      ) : (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: jugador.avatar_url ? `url(${jugador.avatar_url})` : 'none',
+          backgroundColor: 'var(--bg-elev)',
+          backgroundSize: 'cover', backgroundPosition: 'center top',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {!jugador.avatar_url && (
+            <span style={{ fontSize: 64, fontWeight: 800, color: 'var(--text-muted)' }}>
+              {jugador.nombre?.[0]?.toUpperCase()}
+            </span>
+          )}
+        </div>
+      )}
 
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.88) 0%, rgba(0,0,0,.2) 45%, transparent 70%)' }} />
 
@@ -84,8 +113,9 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
           ))}
         </div>
 
-        <h2 style={{ fontSize: 30, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {jugador.nombre}, {jugador.edad}
+        <h2 style={{ fontSize: esPareja ? 22 : 30, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {jugador.nombre}
+          {!esPareja && `, ${jugador.edad}`}
           <span className="badge" style={{ background: 'rgba(255,255,255,.15)', borderColor: 'rgba(255,255,255,.25)', color: '#fff', fontSize: 11 }}>
             {rango.nombre}
           </span>
@@ -98,7 +128,7 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
             {jugador.disponibilidad.map((d) => iconoDisponibilidad(d)).join(' ')}
           </p>
         )}
-        {jugador.descripcion && (
+        {!esPareja && jugador.descripcion && (
           <p style={{ fontSize: 14, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>{jugador.descripcion}</p>
         )}
       </div>

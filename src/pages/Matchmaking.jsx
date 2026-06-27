@@ -13,7 +13,7 @@ import { solapeDisponibilidad } from '../lib/disponibilidad';
 import { sonidoDesafio, sonidoPasar } from '../lib/sounds';
 import PaywallModal from '../components/PaywallModal.jsx';
 
-const esFakeId = (id) => typeof id === 'string' && id.startsWith('fake-');
+const esFakeId = (id) => typeof id === 'string' && (id.startsWith('fake-') || id.startsWith('pair-'));
 
 export default function Matchmaking() {
   const { profile, user, refreshProfile } = useAuth();
@@ -44,9 +44,41 @@ export default function Matchmaking() {
     const zona = ubicacionKey(profile.provincia, profile.isla);
     const swipes = getFakeSwipes(user.id, modo);
     const deportesModo = getModo(modo).deportes;
-    return PERFILES_FALSOS.filter((f) => {
+
+    const base = PERFILES_FALSOS.filter((f) => {
       const mismaZona = ubicacionKey(f.provincia, f.isla) === zona;
-      if (!mismaZona || !deportesModo.includes(f.deporte)) return false;
+      return mismaZona && deportesModo.includes(f.deporte);
+    });
+
+    if (modo === 'tenis_dobles' || modo === 'padel') {
+      const parejas = [];
+      for (let i = 0; i + 1 < base.length; i += 2) {
+        const p1 = base[i];
+        const p2 = base[i + 1];
+        const pairId = `pair-${p1.id}-${p2.id}`;
+        const accion = swipes[pairId];
+        if (soloExcluirDesafiados && accion === 'desafiado') continue;
+        if (!soloExcluirDesafiados && accion) continue;
+        parejas.push({
+          id: pairId,
+          jugador1: p1,
+          jugador2: p2,
+          nombre: `${p1.nombre.split(' ')[0]} & ${p2.nombre.split(' ')[0]}`,
+          edad: p1.edad,
+          puntos: Math.round((p1.puntos + p2.puntos) / 2),
+          deporte: p1.deporte,
+          nivel: `${p1.nivel} · ${p2.nivel}`,
+          provincia: p1.provincia,
+          isla: p1.isla,
+          disponibilidad: p1.disponibilidad || [],
+          descripcion: p1.descripcion,
+          avatar_url: null,
+        });
+      }
+      return parejas;
+    }
+
+    return base.filter((f) => {
       const accion = swipes[f.id];
       if (soloExcluirDesafiados) return accion !== 'desafiado';
       return !accion;
@@ -166,7 +198,7 @@ export default function Matchmaking() {
       <div className="chip-row" style={{ marginBottom: modo === 'tenis_dobles' ? 8 : 16 }}>
         {MODOS.map((m) => (
           <button key={m.id} className={`chip ${modo === m.id ? 'selected' : ''}`} onClick={() => setModo(m.id)}>
-            {m.icono} {m.label}
+            {m.label}
           </button>
         ))}
       </div>
@@ -189,10 +221,10 @@ export default function Matchmaking() {
           <div style={{ position: 'relative', flex: 1, minHeight: 420 }}>
             {jugadores.length === 0 && (
               <div className="card" style={{ textAlign: 'center', padding: 40, marginTop: 60 }}>
-                <p style={{ fontSize: 40, marginBottom: 12 }}>🎾</p>
+                <p style={{ fontSize: 40, marginBottom: 12 }}>—</p>
                 <p style={{ fontWeight: 700, marginBottom: 6 }}>No hay más jugadores cerca</p>
                 <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 18 }}>Vuelve más tarde o cambia tu ubicación desde el perfil.</p>
-                <button className="btn-primary" onClick={recargar}>🔄 Recargar</button>
+                <button className="btn-primary" onClick={recargar}>Recargar</button>
               </div>
             )}
 
@@ -219,9 +251,9 @@ export default function Matchmaking() {
               <button
                 onClick={() => desafiarConPaywall(jugadores[0])}
                 disabled={procesando}
-                style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--accent)', fontSize: 24, color: '#fff' }}
+                style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--accent)', fontSize: 24, color: '#fff', fontWeight: 800 }}
               >
-                🎾
+                ✓
               </button>
             </div>
           )}

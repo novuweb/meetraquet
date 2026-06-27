@@ -74,6 +74,26 @@ export default function ChatRoom() {
     finRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes.length]);
 
+  // Auto-acepta el desafío fake tras 4 segundos (simula respuesta del rival)
+  useEffect(() => {
+    if (!esFake || !chat || chat.estado_desafio !== 'pendiente') return;
+    const t = setTimeout(() => {
+      const ahora = new Date().toISOString();
+      const msgAceptado = { id: `m-accept-${Date.now()}`, remitente_id: otro?.id || 'fake', contenido: 'Desafio aceptado. Coordina el partido por aqui.', tipo: 'sistema', created_at: ahora };
+      const updated = actualizarFakeChat(user.id, chatId, (c) => ({
+        ...c,
+        estado_desafio: 'aceptado',
+        mensajes: [...c.mensajes, msgAceptado],
+      }));
+      if (updated) {
+        setChat({ ...updated });
+        setMensajes([...updated.mensajes]);
+        setShowMatchAccepted(true);
+      }
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [chat?.estado_desafio, esFake]);
+
   async function cargarPartido(partidoId) {
     const { data } = await supabase.from('partidos').select('*').eq('id', partidoId).single();
     if (data) setPartidos((prev) => ({ ...prev, [data.id]: data }));

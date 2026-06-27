@@ -32,25 +32,24 @@ function saveFakeChats(uid, obj) {
   localStorage.setItem(chatsKey(uid), JSON.stringify(obj));
 }
 
-// Crea el chat con el mensaje de desafío. Se autoacepta al instante (el
-// perfil falso no puede responder de verdad), para no dejar al usuario
-// esperando una respuesta que nunca llegará.
+// Crea el chat con el mensaje de desafío en estado pendiente.
+// ChatRoom auto-acepta tras unos segundos (simula que el rival responde).
 export function crearFakeChat(uid, modo, fakePerfil) {
+  const jugador1 = fakePerfil.jugador1 || fakePerfil;
   const chats = getFakeChats(uid);
   const chatId = `fake-chat-${modo}-${fakePerfil.id}`;
   const ahora = new Date().toISOString();
   const chat = {
     id: chatId,
     usuario_a: uid,
-    usuario_b: fakePerfil.id,
+    usuario_b: jugador1.id,
     modo,
-    estado_desafio: 'aceptado',
+    estado_desafio: 'pendiente',
     desafio_iniciado_por: uid,
     archivado: false,
-    otro: fakePerfil,
+    otro: { ...jugador1, nombre: fakePerfil.nombre },
     mensajes: [
       { id: 'm1', remitente_id: uid, contenido: '¡Hola! Te desafío a un partido. ¿Aceptas el reto?', tipo: 'desafio', created_at: ahora },
-      { id: 'm2', remitente_id: fakePerfil.id, contenido: '✅ Desafío aceptado. ¡A coordinar el partido!', tipo: 'sistema', created_at: ahora },
     ],
   };
   chats[chatId] = chat;
