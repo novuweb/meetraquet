@@ -5,36 +5,48 @@ import { supabase } from '../lib/supabaseClient';
 
 export default function PagoExitoso() {
   const navigate = useNavigate();
-  const { user, refreshProfile } = useAuth();
-  const [estado, setEstado] = useState('verificando'); // verificando | listo | error
+  const { user, refreshProfile, loadingSession } = useAuth();
+  const [estado, setEstado] = useState('verificando');
 
   useEffect(() => {
+    // Timeout máximo de 8 segundos — si algo falla mostramos éxito igualmente
+    // porque el webhook ya actualizó la BD aunque la sesión tarde en cargar
+    const timeout = setTimeout(async () => {
+      await refreshProfile().catch(() => {});
+      setEstado('listo');
+    }, 8000);
+
+    return () => clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    // En cuanto tengamos el user ID, comprobamos suscrito directamente en Supabase
     if (!user?.id) return;
 
     let intentos = 0;
-    const MAX_INTENTOS = 10;
+    const MAX_INTENTOS = 8;
 
-    // Polling: espera hasta que el webhook de Stripe actualice suscrito=true
     const intervalo = setInterval(async () => {
       intentos++;
-      const { data } = await supabase
-        .from('profiles')
-        .select('suscrito')
-        .eq('id', user.id)
-        .single();
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('suscrito')
+          .eq('id', user.id)
+          .single();
 
-      if (data?.suscrito) {
-        clearInterval(intervalo);
-        await refreshProfile();
-        setEstado('listo');
-      } else if (intentos >= MAX_INTENTOS) {
-        clearInterval(intervalo);
-        // Aunque el webhook no haya llegado todavía, mostramos éxito
-        // El webhook lo actualizará en segundos
-        await refreshProfile();
-        setEstado('listo');
+        if (data?.suscrito || intentos >= MAX_INTENTOS) {
+          clearInterval(intervalo);
+          await refreshProfile().catch(() => {});
+          setEstado('listo');
+        }
+      } catch {
+        if (intentos >= MAX_INTENTOS) {
+          clearInterval(intervalo);
+          setEstado('listo');
+        }
       }
-    }, 1500);
+    }, 1200);
 
     return () => clearInterval(intervalo);
   }, [user?.id]);
@@ -46,7 +58,6 @@ export default function PagoExitoso() {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       justifyContent: 'center', padding: '32px 24px', gap: '20px',
     }}>
-      {/* Logo */}
       <img src="/logo-mr.png" alt="MeetRacquet" style={{ height: '64px', marginBottom: '8px' }} />
 
       {estado === 'verificando' && (
@@ -67,7 +78,6 @@ export default function PagoExitoso() {
 
       {estado === 'listo' && (
         <>
-          {/* Icono de éxito animado */}
           <div style={{
             width: 80, height: 80, borderRadius: '50%',
             background: 'rgba(34,197,94,0.15)',
@@ -91,7 +101,6 @@ export default function PagoExitoso() {
             Tu acceso ilimitado ya está activo. Desafía a quien quieras, sube en el ranking y domina la pista.
           </p>
 
-          {/* Beneficios recordatorio */}
           <div style={{
             background: 'rgba(34,197,94,0.06)',
             border: '1px solid rgba(34,197,94,0.2)',
