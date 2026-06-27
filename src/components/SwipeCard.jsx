@@ -124,9 +124,13 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
           {jugador.deporte} · {jugador.nivel} · {ubicacionLabel(jugador.provincia, jugador.isla)}
         </p>
         {jugador.disponibilidad?.length > 0 && (
-          <p style={{ fontSize: 18, marginTop: 8 }}>
-            {jugador.disponibilidad.map((d) => iconoDisponibilidad(d)).join(' ')}
-          </p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+            {jugador.disponibilidad.map((d) => (
+              <span key={d} style={{ fontSize: 11, background: 'rgba(255,255,255,.15)', borderRadius: 6, padding: '2px 7px', color: '#fff' }}>
+                {iconoDisponibilidad(d)}
+              </span>
+            ))}
+          </div>
         )}
         {!esPareja && jugador.descripcion && (
           <p style={{ fontSize: 14, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>{jugador.descripcion}</p>

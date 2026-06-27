@@ -195,7 +195,7 @@ export default function Profile() {
           <p>
             <strong>Disponibilidad:</strong>{' '}
             {profile.disponibilidad?.length
-              ? profile.disponibilidad.map((d) => iconoDisponibilidad(d)).join(' ')
+              ? profile.disponibilidad.map((d) => iconoDisponibilidad(d)).join(', ')
               : '—'}
           </p>
         </div>
@@ -240,7 +240,7 @@ export default function Profile() {
                   className={`chip ${(form.disponibilidad || []).includes(o.id) ? 'selected' : ''}`}
                   onClick={() => toggleDisponibilidadForm(o.id)}
                 >
-                  {o.icono} {o.label}
+                  {o.label}
                 </button>
               ))}
             </div>
