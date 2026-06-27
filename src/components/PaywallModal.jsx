@@ -1,24 +1,37 @@
 import { useAuth } from '../hooks/useAuth.jsx';
 
-// Enlace de pago de Stripe — ya configurado
 const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/4gMeVf8SUbp991VdBm4c809';
 
-// URL a la que Stripe redirige tras el pago (configura esto en el Dashboard de Stripe)
-const SUCCESS_URL = `${window.location.origin}/pago-exitoso`;
-
 const BENEFITS = [
-  { text: 'Desafía a jugadores ilimitados' },
-  { text: 'Chatea con tus rivales' },
-  { text: 'Sube en el ranking' },
-  { text: 'Accede a todos los modos de matchmaking' },
+  'Desafía a jugadores ilimitados',
+  'Chatea con tus rivales',
+  'Sube en el ranking',
+  'Accede a todos los modos de matchmaking',
 ];
+
+// Estrella SVG sin emoji
+function Star({ filled = true }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#F59E0B' : 'none'} stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
 
 export default function PaywallModal({ onClose }) {
   const { user } = useAuth();
+
+  function irAPago() {
+    const params = new URLSearchParams();
+    if (user?.id) params.set('client_reference_id', user.id);
+    if (user?.email) params.set('prefilled_email', user.email);
+    window.location.href = `${STRIPE_PAYMENT_LINK}?${params.toString()}`;
+  }
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.97)',
+      background: 'rgba(0,0,0,0.96)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       justifyContent: 'center', padding: '24px',
       backdropFilter: 'blur(10px)',
@@ -26,38 +39,39 @@ export default function PaywallModal({ onClose }) {
     }}>
       {/* Valoración */}
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', color: '#9A9A9A', marginBottom: '6px', letterSpacing: '0.05em' }}>
-          🏆 Usado por jugadores de toda España
+        <div style={{ fontSize: '12px', color: '#9A9A9A', marginBottom: '8px', letterSpacing: '0.05em' }}>
+          Usado por jugadores de toda España
         </div>
-        <div style={{ fontSize: '22px', letterSpacing: '2px' }}>⭐⭐⭐⭐⭐</div>
-        <div style={{ fontSize: '13px', color: '#9A9A9A', marginTop: '2px' }}>4.8 · Valoración media</div>
+        <div style={{ display: 'flex', gap: 3, justifyContent: 'center', marginBottom: 4 }}>
+          {[1,2,3,4,5].map((i) => <Star key={i} filled />)}
+        </div>
+        <div style={{ fontSize: '13px', color: '#9A9A9A' }}>4.8 · Valoración media</div>
       </div>
 
       {/* Logo */}
-      <img src="/logo-mr.png" alt="MeetRacquet" style={{ height: '56px', marginBottom: '18px' }} />
+      <img src="/logo-mr.png" alt="MeetRacquet" style={{ height: '52px', marginBottom: '16px' }} />
 
       {/* Título */}
       <h1 style={{
-        fontFamily: 'Poppins, sans-serif', fontSize: '34px', fontWeight: 800,
-        textAlign: 'center', lineHeight: 1.1, marginBottom: '24px',
-        letterSpacing: '-0.02em',
+        fontFamily: 'Poppins, sans-serif', fontSize: '32px', fontWeight: 800,
+        textAlign: 'center', lineHeight: 1.1, marginBottom: '22px',
+        letterSpacing: '-0.02em', color: '#fff',
       }}>
-        <span style={{ color: '#22C55E' }}>Acceso</span>{' '}ilimitado
+        <span style={{ color: '#22C55E' }}>Acceso</span> ilimitado
       </h1>
 
       {/* Beneficios */}
-      <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '22px' }}>
         {BENEFITS.map((b, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '32px', height: '32px', borderRadius: '10px',
-              background: 'rgba(34,197,94,0.15)', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              border: '1px solid rgba(34,197,94,0.25)',
+              width: '30px', height: '30px', borderRadius: '9px', flexShrink: 0,
+              background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <span style={{ color: '#22C55E', fontSize: '16px', fontWeight: 700 }}>✓</span>
+              <span style={{ color: '#22C55E', fontSize: '15px', fontWeight: 700 }}>✓</span>
             </div>
-            <span style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.4 }}>{b.text}</span>
+            <span style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.4, color: '#fff' }}>{b}</span>
           </div>
         ))}
       </div>
@@ -65,39 +79,27 @@ export default function PaywallModal({ onClose }) {
       {/* Precio */}
       <div style={{
         width: '100%', maxWidth: '320px',
-        border: '1.5px solid #22C55E',
-        borderRadius: '16px', padding: '16px', textAlign: 'center',
-        marginBottom: '20px', background: 'rgba(34,197,94,0.05)',
+        border: '1.5px solid #22C55E', borderRadius: '16px',
+        padding: '16px', textAlign: 'center', marginBottom: '18px',
+        background: 'rgba(34,197,94,0.06)',
         boxShadow: '0 0 24px rgba(34,197,94,0.1)',
       }}>
-        <div style={{ fontSize: '13px', color: '#9A9A9A', marginBottom: '4px' }}>Primera semana gratis</div>
-        <div style={{ fontSize: '22px', fontWeight: 700 }}>
-          Después <span style={{ color: '#22C55E' }}>2,99 €/mes</span>
+        <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff' }}>
+          <span style={{ color: '#22C55E' }}>2,99 €</span>/mes
         </div>
+        <div style={{ fontSize: '13px', color: '#9A9A9A', marginTop: '4px' }}>Cancela cuando quieras</div>
       </div>
 
       {/* Botón */}
       <button
         className="btn-primary"
         style={{ width: '100%', maxWidth: '320px', fontSize: '17px', padding: '16px', borderRadius: '16px' }}
-        onClick={() => {
-          // Adjuntamos el user ID como client_reference_id para que el webhook
-          // de Stripe pueda vincular el pago con el perfil del usuario
-          const params = new URLSearchParams();
-          if (user?.id) params.set('client_reference_id', user.id);
-          if (user?.email) params.set('prefilled_email', user.email);
-          const url = `${STRIPE_PAYMENT_LINK}?${params.toString()}`;
-          window.location.href = url; // misma pestaña para que SUCCESS_URL funcione
-        }}
+        onClick={irAPago}
       >
-        Continuar
+        Suscribirme ahora
       </button>
 
-      <p style={{ fontSize: '12px', color: '#9A9A9A', textAlign: 'center', marginTop: '14px', maxWidth: '280px', lineHeight: 1.5 }}>
-        7 días gratis, luego 2,99 €/mes. Cancela cuando quieras.
-      </p>
-
-      <div style={{ display: 'flex', gap: '16px', marginTop: '12px', fontSize: '12px', color: '#9A9A9A' }}>
+      <div style={{ display: 'flex', gap: '16px', marginTop: '16px', fontSize: '12px', color: '#9A9A9A' }}>
         <span style={{ cursor: 'pointer', textDecoration: 'underline' }}>Términos</span>
         <span>·</span>
         <span style={{ cursor: 'pointer', textDecoration: 'underline' }}>Privacidad</span>
