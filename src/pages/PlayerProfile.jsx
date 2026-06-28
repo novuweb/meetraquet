@@ -77,13 +77,23 @@ export default function PlayerProfile() {
         <p style={{ marginTop: 6, fontSize: 14 }}><strong>{rango.nombre}</strong> · {jugador.puntos || 0} pts</p>
       </div>
 
-      {(jugador.deporte || jugador.nivel || jugador.descripcion) && (
-        <div className="card" style={{ marginBottom: 18 }}>
-          {jugador.deporte && <p style={{ marginBottom: 8 }}><strong>Deporte:</strong> {jugador.deporte}</p>}
-          {jugador.nivel && <p style={{ marginBottom: 8 }}><strong>Nivel:</strong> {jugador.nivel}</p>}
-          {jugador.descripcion && <p><strong>Descripción:</strong> {jugador.descripcion}</p>}
-        </div>
-      )}
+      {(() => {
+        const tieneTenis = jugador.tenis_nivel || jugador.deporte === 'Tenis' || jugador.deporte === 'Ambos';
+        const tienePadel = jugador.padel_nivel || jugador.deporte === 'Pádel' || jugador.deporte === 'Ambos';
+        const nivelTenis = jugador.tenis_nivel || (jugador.deporte !== 'Pádel' ? jugador.nivel : null);
+        const nivelPadel = jugador.padel_nivel || (jugador.deporte === 'Pádel' || jugador.deporte === 'Ambos' ? jugador.nivel : null);
+        const desc = jugador.tenis_descripcion || jugador.padel_descripcion || jugador.descripcion;
+        if (!tieneTenis && !tienePadel && !desc) return null;
+        return (
+          <div className="card" style={{ marginBottom: 18 }}>
+            {tieneTenis && nivelTenis && <p style={{ marginBottom: 8 }}><strong>Tenis:</strong> {nivelTenis}</p>}
+            {tienePadel && nivelPadel && <p style={{ marginBottom: 8 }}><strong>Pádel:</strong> {nivelPadel}</p>}
+            {jugador.tenis_descripcion && <p style={{ marginBottom: 4, fontSize: 13, color: 'var(--text-muted)' }}>{jugador.tenis_descripcion}</p>}
+            {jugador.padel_descripcion && jugador.padel_descripcion !== jugador.tenis_descripcion && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{jugador.padel_descripcion}</p>}
+            {!jugador.tenis_descripcion && !jugador.padel_descripcion && desc && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{desc}</p>}
+          </div>
+        );
+      })()}
 
       <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', textAlign: 'center', marginBottom: 18 }}>
         <Stat label="Partidos" value={jugador.partidos_jugados || 0} />

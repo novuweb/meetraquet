@@ -1,11 +1,12 @@
-// Tres modos de matchmaking independientes. Cada uno filtra por el
-// campo "deporte" del perfil (que admite 'Pádel' | 'Tenis' | 'Ambos').
 export const MODOS = [
-  { id: 'tenis_1v1', label: 'Tenis 1v1', icono: '🎾', deportes: ['Tenis', 'Ambos'] },
-  { id: 'tenis_dobles', label: 'Tenis Dobles', icono: '👥', deportes: ['Tenis', 'Ambos'] },
-  { id: 'padel', label: 'Pádel', icono: '🏓', deportes: ['Pádel', 'Ambos'] },
+  { id: 'tenis_individual',    label: 'Tenis Individual',           icono: '🎾' },
+  { id: 'tenis_dobles_pareja', label: 'Tenis Dobles — Busco pareja', icono: '🎾' },
+  { id: 'tenis_dobles_rival',  label: 'Tenis Dobles — Tengo pareja', icono: '🎾' },
+  { id: 'padel_individual',    label: 'Pádel Individual',            icono: '🏓' },
+  { id: 'padel_dobles_pareja', label: 'Pádel — Busco pareja',        icono: '🏓' },
+  { id: 'padel_dobles_rival',  label: 'Pádel — Tengo pareja',        icono: '🏓' },
 ];
 
 export function getModo(id) {
-  return MODOS.find((m) => m.id === id) || MODOS[0];
+  return MODOS.find((m) => m.id === id) || { id, label: id || 'Partido', icono: '🎾' };
 }

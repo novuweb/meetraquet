@@ -29,8 +29,20 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
   const startX = useRef(0);
 
   const esFalsaPareja = !!jugador.jugador2;
-  const esRealPareja = !esFalsaPareja && !!jugador.pareja_nombre;
+
+  const modo = jugador.modo_activo || '';
+  const parejaInfo = esFalsaPareja ? null : (() => {
+    const esTenis = modo.includes('tenis');
+    const nombre = esTenis ? jugador.tenis_pareja_nombre : jugador.padel_pareja_nombre;
+    const foto = esTenis ? jugador.tenis_pareja_foto_url : jugador.padel_pareja_foto_url;
+    const juntos = esTenis ? jugador.tenis_foto_juntos_url : jugador.padel_foto_juntos_url;
+    return nombre ? { nombre, foto, juntos } : null;
+  })();
+  const esRealPareja = !!parejaInfo;
   const esPareja = esFalsaPareja || esRealPareja;
+
+  const nivelMostrar = (modo.includes('tenis') ? jugador.tenis_nivel : jugador.padel_nivel) || jugador.nivel || '';
+  const descMostrar = (modo.includes('tenis') ? jugador.tenis_descripcion : jugador.padel_descripcion) || jugador.descripcion || '';
 
   const rango = getRango(jugador.puntos);
   const logros = getLogrosDestacados(esFalsaPareja ? jugador.jugador1 : jugador, 3);
@@ -55,8 +67,6 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
   const opacidadLike = Math.min(Math.max(drag.x / 110, 0), 1);
   const opacidadNope = Math.min(Math.max(-drag.x / 110, 0), 1);
 
-  const nivelMostrar = jugador.nivel_tenis || jugador.nivel_padel || jugador.nivel || '';
-
   return (
     <div
       className="card"
@@ -73,6 +83,7 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
         transition: drag.active ? 'none' : 'transform .3s ease',
         userSelect: 'none',
         cursor: esTop ? 'grab' : 'default',
+        touchAction: esTop ? 'none' : 'auto',
       }}
     >
       {esFalsaPareja ? (
@@ -81,10 +92,18 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
           <AvatarBox avatarUrl={jugador.jugador2.avatar_url} nombre={jugador.jugador2.nombre} side="right" />
         </div>
       ) : esRealPareja ? (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
-          <AvatarBox avatarUrl={jugador.avatar_url} nombre={jugador.nombre} side="left" />
-          <AvatarBox avatarUrl={jugador.pareja_foto_url} nombre={jugador.pareja_nombre} side="right" />
-        </div>
+        parejaInfo.juntos ? (
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: `url(${parejaInfo.juntos})`,
+            backgroundSize: 'cover', backgroundPosition: 'center top',
+          }} />
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+            <AvatarBox avatarUrl={jugador.avatar_url} nombre={jugador.nombre} side="left" />
+            <AvatarBox avatarUrl={parejaInfo.foto} nombre={parejaInfo.nombre} side="right" />
+          </div>
+        )
       ) : (
         <div style={{
           position: 'absolute', inset: 0,
@@ -125,7 +144,7 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
           {esFalsaPareja
             ? jugador.nombre
             : esRealPareja
-              ? `${jugador.nombre} & ${jugador.pareja_nombre}`
+              ? `${jugador.nombre} & ${parejaInfo.nombre}`
               : `${jugador.nombre}, ${jugador.edad}`
           }
           <span className="badge" style={{ background: 'rgba(255,255,255,.15)', borderColor: 'rgba(255,255,255,.25)', color: '#fff', fontSize: 11 }}>
@@ -148,13 +167,8 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
           </div>
         )}
 
-        {!esPareja && (jugador.descripcion || jugador.descripcion_tenis || jugador.descripcion_padel) && (
-          <p style={{ fontSize: 13, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>
-            {jugador.descripcion || jugador.descripcion_tenis || jugador.descripcion_padel}
-          </p>
-        )}
-        {esRealPareja && jugador.descripcion_equipo && (
-          <p style={{ fontSize: 13, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>{jugador.descripcion_equipo}</p>
+        {descMostrar && (
+          <p style={{ fontSize: 13, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>{descMostrar}</p>
         )}
       </div>
     </div>

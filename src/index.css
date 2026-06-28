@@ -185,8 +185,12 @@ button:active { transform: scale(0.97); }
 
 /* SKELETON SHIMMER — reemplaza spinners */
 .spinner{
-  display:none; /* eliminado: usar skeleton en su lugar */
+  width:32px;height:32px;border-radius:50%;
+  border:3px solid var(--border);
+  border-top-color:var(--accent);
+  animation:spin .7s linear infinite;
 }
+@keyframes spin{to{transform:rotate(360deg);}}
 
 .skeleton{
   background:linear-gradient(90deg,#1A1A1A 25%,#2A2A2A 50%,#1A1A1A 75%);

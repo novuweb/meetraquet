@@ -265,7 +265,9 @@ export default function ChatRoom() {
           </div>
           <h1 style={{ fontSize: 17 }}>{otro?.nombre}</h1>
         </button>
-        <button className="chip" onClick={() => setMostrarFormResultado((v) => !v)}>🏆 Finalizar</button>
+        {(chat?.estado_desafio === 'aceptado' || esFake) && (
+          <button className="chip" onClick={() => setMostrarFormResultado((v) => !v)}>🏆 Finalizar</button>
+        )}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>

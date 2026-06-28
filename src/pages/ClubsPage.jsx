@@ -33,12 +33,21 @@ async function fetchClubs(provincia) {
     );
     out body;
   `.trim();
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    body: 'data=' + encodeURIComponent(query),
-  });
-  const data = await res.json();
-  return (data.elements || []).filter((e) => e.tags?.name);
+  const MIRRORS = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.openstreetmap.ru/api/interpreter',
+  ];
+  let lastErr;
+  for (const url of MIRRORS) {
+    try {
+      const res = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(query) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return (data.elements || []).filter((e) => e.tags?.name);
+    } catch (err) { lastErr = err; }
+  }
+  throw lastErr;
 }
 
 export default function ClubsPage() {

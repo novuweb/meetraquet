@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useTheme } from '../hooks/useTheme';
-import { useModo, MODO_LABELS, esModoTengoPareja } from '../hooks/useModo.jsx';
+import { useModo, MODO_LABELS } from '../hooks/useModo.jsx';
 import { supabase } from '../lib/supabaseClient';
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
 import { playDing } from '../lib/sounds';
@@ -41,28 +41,172 @@ function ChipGroup({ opciones, value, onChange }) {
 }
 
 function Avatar({ url, nombre, size = 80 }) {
+  if (url) {
+    return (
+      <img src={url} alt={nombre}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)', display: 'block' }}
+      />
+    );
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      backgroundImage: url ? `url(${url})` : 'none',
-      backgroundSize: 'cover', backgroundPosition: 'center',
-      background: url ? undefined : 'var(--bg-elev)',
+      background: 'var(--bg-elev)', border: '2px solid var(--border)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.35, fontWeight: 800, color: 'var(--text-muted)',
-      border: '2px solid var(--border)',
     }}>
-      {!url && nombre?.[0]?.toUpperCase()}
+      {nombre?.[0]?.toUpperCase()}
     </div>
   );
 }
 
-// Campos de nivel/descripcion por deporte del modo
-function camposPorModo(modo) {
-  const esTenis = modo?.includes('tenis');
-  return {
-    nivel: esTenis ? 'nivel_tenis' : 'nivel_padel',
-    descripcion: esTenis ? 'descripcion_tenis' : 'descripcion_padel',
-  };
+function FotoUpload({ id, preview, onChange, circular = true }) {
+  return (
+    <label htmlFor={id} style={{ cursor: 'pointer', display: 'block', textAlign: circular ? 'center' : 'left' }}>
+      {circular ? (
+        <Avatar url={preview} nombre="+" size={64} />
+      ) : (
+        <div style={{
+          width: '100%', height: 120, borderRadius: 12, overflow: 'hidden',
+          border: '2px dashed var(--border)',
+          background: preview ? `url(${preview}) center/cover` : 'var(--bg-elev)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, color: 'var(--text-muted)',
+        }}>{!preview && 'Subir foto'}</div>
+      )}
+      <p style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'center', marginTop: 4 }}>
+        {preview ? 'Cambiar foto' : 'Subir foto'}
+      </p>
+      <input id={id} type="file" accept="image/*"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onChange(f, URL.createObjectURL(f)); }}
+        style={{ display: 'none' }}
+      />
+    </label>
+  );
+}
+
+// Bloque editable de un deporte (tenis o padel)
+function SeccionDeporte({ deporte, profile, form, setForm, guardando, onGuardar, onGuardarPareja, editando, setEditando }) {
+  const esTenis = deporte === 'tenis';
+  const label = esTenis ? 'Tenis' : 'Padel';
+  const campoNivel = esTenis ? 'tenis_nivel' : 'padel_nivel';
+  const campoDesc = esTenis ? 'tenis_descripcion' : 'padel_descripcion';
+  const modoCol = esTenis ? 'tenis_modo' : 'padel_modo';
+  const tienePareja = profile[modoCol] === 'dobles_rival';
+
+  // Pareja
+  const campoPNombre = esTenis ? 'tenis_pareja_nombre' : 'padel_pareja_nombre';
+  const campoPEdad = esTenis ? 'tenis_pareja_edad' : 'padel_pareja_edad';
+  const campoPFoto = esTenis ? 'tenis_pareja_foto_url' : 'padel_pareja_foto_url';
+  const campoJuntos = esTenis ? 'tenis_foto_juntos_url' : 'padel_foto_juntos_url';
+  const pathPareja = esTenis ? 'tenis-pareja' : 'padel-pareja';
+  const pathJuntos = esTenis ? 'tenis-juntos' : 'padel-juntos';
+
+  const [editPareja, setEditPareja] = useState(false);
+  const [parejaFoto, setParejaFoto] = useState(null);
+  const [parejaFotoPreview, setParejaFotoPreview] = useState(profile[campoPFoto] || null);
+  const [juntosFile, setJuntosFile] = useState(null);
+  const [juntosPreview, setJuntosPreview] = useState(profile[campoJuntos] || null);
+
+  const modoLabel = {
+    individual: 'Individual',
+    dobles_pareja: 'Dobles — Busco pareja',
+    dobles_rival: 'Dobles — Tengo pareja',
+  }[profile[modoCol]] || '—';
+
+  async function guardarPareja() {
+    await onGuardarPareja({
+      parejaFoto, juntosFile, pathPareja, pathJuntos, campoPFoto, campoJuntos,
+    });
+    setEditPareja(false);
+    setParejaFoto(null);
+    setJuntosFile(null);
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 18 }}>
+      {/* Cabecera deporte */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div>
+          <span style={{ fontWeight: 800, fontSize: 16 }}>{label}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>{modoLabel}</span>
+        </div>
+        <button
+          onClick={() => { setEditando(!editando); setEditPareja(false); }}
+          style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+        >{editando ? 'Cancelar' : 'Editar'}</button>
+      </div>
+
+      {!editando && (
+        <>
+          <p style={{ marginBottom: 4 }}><strong>Nivel:</strong> {profile[campoNivel] || '—'}</p>
+          {profile[campoDesc] && (
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 6 }}>{profile[campoDesc]}</p>
+          )}
+        </>
+      )}
+
+      {editando && (
+        <div>
+          <div className="form-group">
+            <label>Nivel</label>
+            <ChipGroup opciones={NIVELES} value={form[campoNivel] || ''} onChange={(v) => setForm((f) => ({ ...f, [campoNivel]: v }))} />
+          </div>
+          <div className="form-group">
+            <label>Descripcion (opcional)</label>
+            <textarea rows={3} maxLength={150} value={form[campoDesc] || ''}
+              onChange={(e) => setForm((f) => ({ ...f, [campoDesc]: e.target.value }))}
+            />
+          </div>
+          <button className="btn-primary" style={{ width: '100%' }} disabled={guardando} onClick={() => onGuardar(setEditando)}>
+            {guardando ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      )}
+
+      {/* Pareja (solo si modo dobles_rival) */}
+      {tienePareja && !editando && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <p style={{ fontWeight: 700, fontSize: 14 }}>Mi pareja de {label}</p>
+            <button onClick={() => setEditPareja(!editPareja)}
+              style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}>
+              {editPareja ? 'Cancelar' : 'Editar fotos'}
+            </button>
+          </div>
+
+          {!editPareja && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Avatar url={profile[campoPFoto]} nombre={profile[campoPNombre]} size={54} />
+              <div>
+                <p style={{ fontWeight: 600 }}>{profile[campoPNombre] || '—'}</p>
+                {profile[campoPEdad] && (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{profile[campoPEdad]} años</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {editPareja && (
+            <div>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Foto de {profile[campoPNombre] || 'tu pareja'}</p>
+              <FotoUpload id={`${deporte}-pareja-foto`} preview={parejaFotoPreview}
+                onChange={(f, p) => { setParejaFoto(f); setParejaFotoPreview(p); }} circular
+              />
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '14px 0 8px' }}>Foto de los dos juntos</p>
+              <FotoUpload id={`${deporte}-juntos-foto`} preview={juntosPreview}
+                onChange={(f, p) => { setJuntosFile(f); setJuntosPreview(p); }} circular={false}
+              />
+              <button className="btn-primary" style={{ width: '100%', marginTop: 14 }}
+                disabled={guardando} onClick={guardarPareja}>
+                {guardando ? 'Guardando...' : 'Guardar fotos'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Profile() {
@@ -71,41 +215,30 @@ export default function Profile() {
   const { modo } = useModo();
   const navigate = useNavigate();
 
-  const [tabModo, setTabModo] = useState(null);
-  const [editando, setEditando] = useState(false);
+  const [editandoTenis, setEditandoTenis] = useState(false);
+  const [editandoPadel, setEditandoPadel] = useState(false);
+  const [editandoComun, setEditandoComun] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [logroSel, setLogroSel] = useState(null);
   const [form, setForm] = useState({});
-  const [fotoParejaFile, setFotoParejaFile] = useState(null);
-  const [fotoParejaPreview, setFotoParejaPreview] = useState(null);
 
-  const modoActivo = tabModo || modo || profile?.modo_activo;
-  const tienePareja = esModoTengoPareja(modoActivo);
-  const esBuscoPareja = modoActivo?.endsWith('_pareja');
-  const campos = camposPorModo(modoActivo);
-
-  useEffect(() => {
-    if (profile && !tabModo) setTabModo(modo || profile.modo_activo);
-  }, [profile?.id, modo]);
+  const modosConf = profile?.modos_configurados || [];
+  const tieneTenis = modosConf.some((m) => m.includes('tenis'));
+  const tienePadel = modosConf.some((m) => m.includes('padel'));
 
   useEffect(() => {
     if (profile) {
       setForm({
         nombre: profile.nombre || '',
         edad: profile.edad || '',
-        nivel_tenis: profile.nivel_tenis || '',
-        descripcion_tenis: profile.descripcion_tenis || '',
-        nivel_padel: profile.nivel_padel || '',
-        descripcion_padel: profile.descripcion_padel || '',
-        pareja_nombre: profile.pareja_nombre || '',
-        pareja_nivel: profile.pareja_nivel || '',
-        descripcion_equipo: profile.descripcion_equipo || '',
-        busco_pareja_desc: profile.busco_pareja_desc || '',
         provincia: profile.provincia || '',
         isla: profile.isla || '',
         disponibilidad: profile.disponibilidad || [],
+        tenis_nivel: profile.tenis_nivel || '',
+        tenis_descripcion: profile.tenis_descripcion || '',
+        padel_nivel: profile.padel_nivel || '',
+        padel_descripcion: profile.padel_descripcion || '',
       });
-      setFotoParejaPreview(profile.pareja_foto_url || null);
     }
   }, [profile?.id]);
 
@@ -131,37 +264,71 @@ export default function Profile() {
 
   const logrosConseguidos = getLogrosConseguidos(profile);
   const idsConseguidos = logrosConseguidos.map((l) => l.id);
-  const modosConfigurados = profile.modos_configurados || [];
 
   async function handleFotoPerfil(e) {
     const file = e.target.files?.[0]; if (!file) return;
-    if (DEMO_MODE) { setProfile({ ...profile, avatar_url: URL.createObjectURL(file) }); return; }
+    const localUrl = URL.createObjectURL(file);
+    setProfile({ ...profile, avatar_url: localUrl });
+    if (DEMO_MODE) return;
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id);
+      await refreshProfile();
+    } catch (err) {
+      console.error('Error subiendo foto:', err);
+      await refreshProfile();
+    }
+  }
+
+  async function uploadFoto(file, path) {
+    if (!file) return null;
     const ext = file.name.split('.').pop();
-    const path = `${user.id}/avatar.${ext}`;
-    await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-    await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id);
-    await refreshProfile();
+    const fullPath = `${user.id}/${path}.${ext}`;
+    const { error } = await supabase.storage.from('avatars').upload(fullPath, file, { upsert: true });
+    if (error) throw error;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(fullPath);
+    return data.publicUrl;
   }
 
-  function handleFotoPareja(e) {
-    const f = e.target.files?.[0]; if (!f) return;
-    setFotoParejaFile(f);
-    setFotoParejaPreview(URL.createObjectURL(f));
-  }
-
-  async function guardar() {
+  async function guardarDeporte(setEditandoFn) {
     setGuardando(true);
     try {
-      let pareja_foto_url = profile.pareja_foto_url;
-      if (fotoParejaFile) {
-        const ext = fotoParejaFile.name.split('.').pop();
-        const path = `${user.id}/pareja.${ext}`;
-        await supabase.storage.from('avatars').upload(path, fotoParejaFile, { upsert: true });
-        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-        pareja_foto_url = data.publicUrl;
-      }
+      const { error } = await supabase.from('profiles').update({
+        tenis_nivel: form.tenis_nivel || null,
+        tenis_descripcion: form.tenis_descripcion || null,
+        padel_nivel: form.padel_nivel || null,
+        padel_descripcion: form.padel_descripcion || null,
+      }).eq('id', user.id);
+      if (error) throw error;
+      await refreshProfile();
+      setEditandoFn(false);
+    } catch (err) { console.error(err); alert('Error al guardar. Inténtalo de nuevo.'); }
+    finally { setGuardando(false); }
+  }
 
+  async function guardarPareja({ parejaFoto, juntosFile, pathPareja, pathJuntos, campoPFoto, campoJuntos }) {
+    setGuardando(true);
+    try {
+      const updates = {};
+      const pUrl = await uploadFoto(parejaFoto, pathPareja);
+      const jUrl = await uploadFoto(juntosFile, pathJuntos);
+      if (pUrl) updates[campoPFoto] = pUrl;
+      if (jUrl) updates[campoJuntos] = jUrl;
+      if (Object.keys(updates).length) {
+        await supabase.from('profiles').update(updates).eq('id', user.id);
+        await refreshProfile();
+      }
+    } catch (err) { console.error(err); }
+    finally { setGuardando(false); }
+  }
+
+  async function guardarComun() {
+    setGuardando(true);
+    try {
       const cambioUbicacion = form.provincia !== profile.provincia || form.isla !== profile.isla;
       if (cambioUbicacion) {
         await supabase.rpc('cambiar_ubicacion', {
@@ -169,68 +336,100 @@ export default function Profile() {
           p_isla: esProvinciaCanaria(form.provincia) ? form.isla : null,
         });
       }
-
       await supabase.from('profiles').update({
         nombre: form.nombre,
         edad: Number(form.edad),
         disponibilidad: form.disponibilidad || [],
-        nivel_tenis: form.nivel_tenis || null,
-        descripcion_tenis: form.descripcion_tenis || null,
-        nivel_padel: form.nivel_padel || null,
-        descripcion_padel: form.descripcion_padel || null,
-        pareja_nombre: form.pareja_nombre || null,
-        pareja_nivel: form.pareja_nivel || null,
-        pareja_foto_url,
-        descripcion_equipo: form.descripcion_equipo || null,
-        busco_pareja_desc: form.busco_pareja_desc || null,
       }).eq('id', user.id);
-
       await refreshProfile();
-      setEditando(false);
-      setFotoParejaFile(null);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setGuardando(false);
-    }
+      setEditandoComun(false);
+    } catch (err) { console.error(err); }
+    finally { setGuardando(false); }
   }
 
   const dispText = profile.disponibilidad?.length
     ? profile.disponibilidad.map(labelDisponibilidad).filter(Boolean).join(', ')
     : '—';
 
-  const nivelActivo = profile[campos.nivel] || '—';
-  const descActiva = profile[campos.descripcion] || '';
-
   return (
     <div className="page">
-      {/* Header con modo activo */}
+      {/* Header */}
       <div className="page-header" style={{ padding: 0, marginBottom: 18 }}>
         <h1>Mi perfil</h1>
         <button className="chip" onClick={() => navigate('/modo')} style={{ fontSize: 12 }}>
-          {modoActivo ? MODO_LABELS[modoActivo] : 'Elegir modo'}
+          {modo ? MODO_LABELS[modo] : 'Elegir modo'}
         </button>
       </div>
 
-      {/* Foto + info principal */}
-      <div className="card" style={{ textAlign: 'center', marginBottom: 18 }}>
-        <label htmlFor="foto-perfil" style={{ cursor: 'pointer' }}>
-          <Avatar url={profile.avatar_url} nombre={profile.nombre} size={96} />
-          <p style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, marginBottom: 8 }}>Cambiar foto</p>
-        </label>
-        <input id="foto-perfil" type="file" accept="image/*" onChange={handleFotoPerfil} style={{ display: 'none' }} />
-        <h2 style={{ fontSize: 21 }}>{profile.nombre}, {profile.edad}</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{ubicacionLabel(profile.provincia, profile.isla)}</p>
-        <p style={{ marginTop: 6, fontSize: 14 }}><strong>{rango.nombre}</strong> · {puntosAnimados} pts</p>
+      {/* Foto + info personal */}
+      <div className="card" style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+          <label htmlFor="foto-perfil" style={{ cursor: 'pointer', flexShrink: 0 }}>
+            <Avatar url={profile.avatar_url} nombre={profile.nombre} size={80} />
+            <p style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'center', marginTop: 4 }}>Cambiar</p>
+          </label>
+          <input id="foto-perfil" type="file" accept="image/*" onChange={handleFotoPerfil} style={{ display: 'none' }} />
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: 20 }}>{profile.nombre}{profile.edad ? `, ${profile.edad}` : ''}</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{ubicacionLabel(profile.provincia, profile.isla)}</p>
+            <p style={{ marginTop: 4, fontSize: 13 }}><strong>{rango.nombre}</strong> · {puntosAnimados} pts</p>
+          </div>
+          <button onClick={() => setEditandoComun(!editandoComun)}
+            style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, alignSelf: 'flex-start' }}>
+            {editandoComun ? 'Cancelar' : 'Editar'}
+          </button>
+        </div>
+
         {siguiente && (
-          <div style={{ marginTop: 10 }}>
-            <div style={{ height: 6, background: 'var(--bg-elev)', borderRadius: 6, overflow: 'hidden' }}>
+          <div>
+            <div style={{ height: 5, background: 'var(--bg-elev)', borderRadius: 6, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${progreso}%`, background: 'var(--accent)', transition: 'width .4s' }} />
             </div>
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
               {siguiente.min - profile.puntos} pts para {siguiente.nombre}
             </p>
           </div>
+        )}
+
+        {editandoComun && (
+          <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+            <div className="form-group"><label>Nombre</label>
+              <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            </div>
+            <div className="form-group"><label>Edad</label>
+              <input type="number" value={form.edad} onChange={(e) => setForm({ ...form, edad: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label>Disponibilidad</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {DISPONIBILIDAD_OPCIONES.map((o) => (
+                  <button key={o.id} type="button"
+                    className={`chip ${(form.disponibilidad || []).includes(o.id) ? 'selected' : ''}`}
+                    onClick={() => setForm((f) => ({
+                      ...f,
+                      disponibilidad: f.disponibilidad?.includes(o.id)
+                        ? f.disponibilidad.filter((d) => d !== o.id)
+                        : [...(f.disponibilidad || []), o.id],
+                    }))}
+                  >{o.label}</button>
+                ))}
+              </div>
+            </div>
+            <SelectorUbicacion
+              provincia={form.provincia} isla={form.isla}
+              onChangeProvincia={(p) => setForm({ ...form, provincia: p, isla: '' })}
+              onChangeIsla={(i) => setForm({ ...form, isla: i })}
+            />
+            <button className="btn-primary" style={{ width: '100%' }} disabled={guardando} onClick={guardarComun}>
+              {guardando ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        )}
+
+        {!editandoComun && (
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+            <strong>Disponibilidad:</strong> {dispText}
+          </p>
         )}
       </div>
 
@@ -242,162 +441,34 @@ export default function Profile() {
         <Stat label="Racha" value={profile.racha_actual} />
       </div>
 
-      {/* Tabs de modos configurados */}
-      {modosConfigurados.length > 1 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-          {modosConfigurados.map((m) => (
-            <button key={m} className={`chip ${tabModo === m ? 'selected' : ''}`}
-              onClick={() => { setTabModo(m); setEditando(false); }}
-              style={{ fontSize: 12 }}
-            >{MODO_LABELS[m] || m}</button>
-          ))}
-        </div>
+      {/* Secciones por deporte */}
+      {tieneTenis && (
+        <SeccionDeporte
+          deporte="tenis" profile={profile} form={form} setForm={setForm}
+          guardando={guardando}
+          onGuardar={guardarDeporte}
+          onGuardarPareja={guardarPareja}
+          editando={editandoTenis} setEditando={setEditandoTenis}
+        />
+      )}
+      {tienePadel && (
+        <SeccionDeporte
+          deporte="padel" profile={profile} form={form} setForm={setForm}
+          guardando={guardando}
+          onGuardar={guardarDeporte}
+          onGuardarPareja={guardarPareja}
+          editando={editandoPadel} setEditando={setEditandoPadel}
+        />
       )}
 
-      {/* Info del modo activo */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <p style={{ fontWeight: 700, fontSize: 15 }}>{MODO_LABELS[modoActivo] || modoActivo || 'Perfil'}</p>
-        <button
-          onClick={() => setEditando(!editando)}
-          style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
-        >{editando ? 'Cancelar' : 'Editar'}</button>
-      </div>
-
-      {!editando && (
-        <div className="card" style={{ marginBottom: 18 }}>
-          <p style={{ marginBottom: 8 }}><strong>Nivel:</strong> {nivelActivo}</p>
-          {descActiva && <p style={{ marginBottom: 8, color: 'var(--text-muted)', fontSize: 14 }}>{descActiva}</p>}
-
-          {esBuscoPareja && profile.busco_pareja_desc && (
-            <>
-              <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '12px 0' }} />
-              <p style={{ fontWeight: 700, marginBottom: 6 }}>Que busco en una pareja</p>
-              <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>{profile.busco_pareja_desc}</p>
-            </>
-          )}
-
-          {tienePareja && (
-            <>
-              <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '12px 0' }} />
-              <p style={{ fontWeight: 700, marginBottom: 10 }}>Mi pareja</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <Avatar url={profile.pareja_foto_url} nombre={profile.pareja_nombre} size={56} />
-                <div>
-                  <p style={{ fontWeight: 600 }}>{profile.pareja_nombre || '—'}</p>
-                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nivel: {profile.pareja_nivel || '—'}</p>
-                </div>
-              </div>
-              {profile.descripcion_equipo && (
-                <p style={{ marginTop: 10, fontSize: 14, color: 'var(--text-muted)' }}>{profile.descripcion_equipo}</p>
-              )}
-            </>
-          )}
-
-          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '12px 0' }} />
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}><strong>Disponibilidad:</strong> {dispText}</p>
-        </div>
-      )}
-
-      {editando && (
-        <div className="card" style={{ marginBottom: 18 }}>
-          {/* Datos comunes */}
-          <div className="form-group">
-            <label>Nombre</label>
-            <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-          </div>
-          <div className="form-group">
-            <label>Edad</label>
-            <input type="number" value={form.edad} onChange={(e) => setForm({ ...form, edad: e.target.value })} />
-          </div>
-
-          {/* Datos del modo */}
-          <div className="form-group">
-            <label>Nivel</label>
-            <ChipGroup opciones={NIVELES} value={form[campos.nivel]} onChange={(v) => setForm({ ...form, [campos.nivel]: v })} />
-          </div>
-          <div className="form-group">
-            <label>Descripcion</label>
-            <textarea rows={2} maxLength={150} value={form[campos.descripcion]} onChange={(e) => setForm({ ...form, [campos.descripcion]: e.target.value })} />
-          </div>
-
-          {esBuscoPareja && (
-            <div className="form-group">
-              <label>Que buscas en una pareja</label>
-              <textarea rows={2} maxLength={150} value={form.busco_pareja_desc} onChange={(e) => setForm({ ...form, busco_pareja_desc: e.target.value })} placeholder="Describe el companero ideal..." />
-            </div>
-          )}
-
-          {tienePareja && (
-            <>
-              <div className="form-group">
-                <label>Nombre de tu pareja</label>
-                <input value={form.pareja_nombre} onChange={(e) => setForm({ ...form, pareja_nombre: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>Foto de tu pareja</label>
-                <label htmlFor="foto-pareja" style={{ cursor: 'pointer', display: 'block' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Avatar url={fotoParejaPreview} nombre={form.pareja_nombre} size={52} />
-                    <span style={{ fontSize: 13, color: 'var(--accent)' }}>
-                      {fotoParejaPreview ? 'Cambiar foto' : 'Subir foto (opcional)'}
-                    </span>
-                  </div>
-                  <input id="foto-pareja" type="file" accept="image/*" onChange={handleFotoPareja} style={{ display: 'none' }} />
-                </label>
-              </div>
-              <div className="form-group">
-                <label>Nivel de tu pareja</label>
-                <ChipGroup opciones={NIVELES} value={form.pareja_nivel} onChange={(v) => setForm({ ...form, pareja_nivel: v })} />
-              </div>
-              <div className="form-group">
-                <label>Descripcion del equipo</label>
-                <textarea rows={2} maxLength={150} value={form.descripcion_equipo} onChange={(e) => setForm({ ...form, descripcion_equipo: e.target.value })} placeholder="Cuentanos algo sobre vosotros como equipo..." />
-              </div>
-            </>
-          )}
-
-          <div className="form-group">
-            <label>Disponibilidad</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {DISPONIBILIDAD_OPCIONES.map((o) => (
-                <button key={o.id} type="button"
-                  className={`chip ${(form.disponibilidad || []).includes(o.id) ? 'selected' : ''}`}
-                  onClick={() => setForm((f) => ({
-                    ...f,
-                    disponibilidad: f.disponibilidad?.includes(o.id)
-                      ? f.disponibilidad.filter((d) => d !== o.id)
-                      : [...(f.disponibilidad || []), o.id],
-                  }))}
-                >{o.label}</button>
-              ))}
-            </div>
-          </div>
-
-          <SelectorUbicacion
-            provincia={form.provincia} isla={form.isla}
-            onChangeProvincia={(p) => setForm({ ...form, provincia: p, isla: '' })}
-            onChangeIsla={(i) => setForm({ ...form, isla: i })}
-          />
-
-          <button className="btn-primary" style={{ width: '100%' }} disabled={guardando} onClick={guardar}>
-            {guardando ? 'Guardando...' : 'Guardar cambios'}
-          </button>
-        </div>
-      )}
-
-      {/* Añadir otro modo */}
-      <button
-        className="btn-outline"
-        style={{ width: '100%', marginBottom: 18 }}
-        onClick={() => navigate('/modo')}
-      >
+      {/* Añadir modo */}
+      <button className="btn-outline" style={{ width: '100%', marginBottom: 18 }} onClick={() => navigate('/modo')}>
         Configurar otro modo de juego
       </button>
 
       <CodigoReferido profile={profile} />
       <HistorialPartidos profile={profile} userId={user?.id} />
 
-      {/* Logros */}
       <h3 style={{ fontSize: 16, marginBottom: 10, marginTop: 4 }}>Logros</h3>
       <div className="chip-row" style={{ marginBottom: 20, flexWrap: 'wrap' }}>
         {LOGROS_DEF.map((l) => (
@@ -408,7 +479,6 @@ export default function Profile() {
       </div>
       <LogroModal logro={logroSel} conseguido={logroSel ? idsConseguidos.includes(logroSel.id) : false} onClose={() => setLogroSel(null)} />
 
-      {/* Ajustes */}
       <div className="card" style={{ marginBottom: 18 }}>
         <p style={{ fontWeight: 700, marginBottom: 14 }}>Ajustes</p>
         <button className="chip" onClick={toggleTheme}>

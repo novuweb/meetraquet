@@ -33,7 +33,7 @@ export default function Ranking() {
       return;
     }
 
-    let query = supabase.from('profiles').select('id, nombre, avatar_url, provincia, isla, puntos, deporte').eq('perfil_completo', true);
+    let query = supabase.from('profiles').select('id, nombre, avatar_url, provincia, isla, puntos, modos_configurados').eq('perfil_completo', true);
 
     if (filtroZona === 'zona') {
       const zona = ubicacionKey(profile.provincia, profile.isla);
@@ -53,8 +53,19 @@ export default function Ranking() {
     setCargando(false);
   }
 
+  function jugadorTieneDeporte(j, filtro) {
+    if (filtro === 'todos') return true;
+    // v3 real users
+    if (j.modos_configurados?.length) {
+      const busca = filtro === 'Tenis' ? 'tenis' : 'padel';
+      return j.modos_configurados.some((m) => m.includes(busca));
+    }
+    // v2 / fake profiles
+    return j.deporte === filtro || j.deporte === 'Ambos';
+  }
+
   const lista = todos
-    .filter((j) => filtroDeporte === 'todos' || j.deporte === filtroDeporte || j.deporte === 'Ambos')
+    .filter((j) => jugadorTieneDeporte(j, filtroDeporte))
     .sort((a, b) => b.puntos - a.puntos)
     .map((j, i) => ({ ...j, posicion: i + 1 }));
 

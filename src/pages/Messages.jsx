@@ -43,25 +43,23 @@ export default function Messages() {
       .eq('archivado', false)
       .order('created_at', { ascending: false });
 
-    const conUltimoMensaje = await Promise.all(
-      (chatsData || []).map(async (chat) => {
-        const otro = chat.usuario_a === user.id ? chat.otro_b : chat.otro_a;
-        const { data: ultimo } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('chat_id', chat.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const { count: noLeidos } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('chat_id', chat.id)
-          .eq('leido', false)
-          .neq('remitente_id', user.id);
-        return { ...chat, otro, ultimo, noLeidos: noLeidos || 0 };
-      })
-    );
+    const chatIds = (chatsData || []).map((c) => c.id);
+    const [{ data: todosMsg }, { data: noLeidosData }] = chatIds.length
+      ? await Promise.all([
+          supabase.from('messages').select('*').in('chat_id', chatIds).order('created_at', { ascending: false }),
+          supabase.from('messages').select('chat_id').in('chat_id', chatIds).eq('leido', false).neq('remitente_id', user.id),
+        ])
+      : [{ data: [] }, { data: [] }];
+
+    const ultimoPorChat = {};
+    (todosMsg || []).forEach((m) => { if (!ultimoPorChat[m.chat_id]) ultimoPorChat[m.chat_id] = m; });
+    const noLeidosPorChat = {};
+    (noLeidosData || []).forEach((m) => { noLeidosPorChat[m.chat_id] = (noLeidosPorChat[m.chat_id] || 0) + 1; });
+
+    const conUltimoMensaje = (chatsData || []).map((chat) => {
+      const otro = chat.usuario_a === user.id ? chat.otro_b : chat.otro_a;
+      return { ...chat, otro, ultimo: ultimoPorChat[chat.id] || null, noLeidos: noLeidosPorChat[chat.id] || 0 };
+    });
 
     const fakeChats = listarFakeChats(user.id).map((chat) => {
       const ultimo = chat.mensajes[chat.mensajes.length - 1];
