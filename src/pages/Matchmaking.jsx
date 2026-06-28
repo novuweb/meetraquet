@@ -15,28 +15,38 @@ import PaywallModal from '../components/PaywallModal.jsx';
 
 const esFakeId = (id) => typeof id === 'string' && (id.startsWith('fake-') || id.startsWith('pair-'));
 
+// El modo dobles/padel filtra según dobles_busca del PERFIL del usuario:
+//   'rival'  → tiene pareja, busca rival → ve a otros que también buscan rival
+//   'pareja' → busca compañero → ve a otros que también buscan compañero
+//   null     → individual (solo aparece en tenis_1v1)
+function doblesQueryParam(profile, modo) {
+  if (modo === 'tenis_1v1') return null; // no filtra por dobles_busca
+  return profile?.dobles_busca || 'rival';
+}
+
 export default function Matchmaking() {
   const { profile, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [modo, setModo] = useState('tenis_1v1');
-  const [doblesBusca, setDoblesBusca] = useState(profile?.dobles_busca || 'rival');
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
 
+  // filtro local de busca en dobles/padel — no modifica el perfil
+  const [filtroDobles, setFiltroDobles] = useState(profile?.dobles_busca || 'rival');
+
+  const modoNecesitaFiltro = modo === 'tenis_dobles' || modo === 'padel';
+
   useEffect(() => {
-    if (DEMO_MODE) {
-      setJugadores(demoJugadores);
-      setCargando(false);
-      return;
-    }
+    if (DEMO_MODE) { setJugadores(demoJugadores); setCargando(false); return; }
     if (profile) cargarCandidatos();
-  }, [profile?.id, modo, doblesBusca]);
+  }, [profile?.id, modo, filtroDobles]);
 
   function ordenarPorDisponibilidad(lista) {
     return [...lista].sort((a, b) =>
-      solapeDisponibilidad(b.disponibilidad, profile.disponibilidad) - solapeDisponibilidad(a.disponibilidad, profile.disponibilidad)
+      solapeDisponibilidad(b.disponibilidad, profile.disponibilidad) -
+      solapeDisponibilidad(a.disponibilidad, profile.disponibilidad)
     );
   }
 
@@ -50,34 +60,28 @@ export default function Matchmaking() {
       return mismaZona && deportesModo.includes(f.deporte);
     });
 
+    // Modos dobles/padel: mostrar como parejas
     if (modo === 'tenis_dobles' || modo === 'padel') {
       const parejas = [];
       for (let i = 0; i + 1 < base.length; i += 2) {
-        const p1 = base[i];
-        const p2 = base[i + 1];
+        const p1 = base[i], p2 = base[i + 1];
         const pairId = `pair-${p1.id}-${p2.id}`;
         const accion = swipes[pairId];
         if (soloExcluirDesafiados && accion === 'desafiado') continue;
         if (!soloExcluirDesafiados && accion) continue;
         parejas.push({
-          id: pairId,
-          jugador1: p1,
-          jugador2: p2,
+          id: pairId, jugador1: p1, jugador2: p2,
           nombre: `${p1.nombre.split(' ')[0]} & ${p2.nombre.split(' ')[0]}`,
-          edad: p1.edad,
-          puntos: Math.round((p1.puntos + p2.puntos) / 2),
-          deporte: p1.deporte,
-          nivel: `${p1.nivel} · ${p2.nivel}`,
-          provincia: p1.provincia,
-          isla: p1.isla,
-          disponibilidad: p1.disponibilidad || [],
-          descripcion: p1.descripcion,
-          avatar_url: null,
+          edad: p1.edad, puntos: Math.round((p1.puntos + p2.puntos) / 2),
+          deporte: p1.deporte, nivel: `${p1.nivel} · ${p2.nivel}`,
+          provincia: p1.provincia, isla: p1.isla,
+          disponibilidad: p1.disponibilidad || [], descripcion: p1.descripcion, avatar_url: null,
         });
       }
       return parejas;
     }
 
+    // Modo individual: perfiles sueltos
     return base.filter((f) => {
       const accion = swipes[f.id];
       if (soloExcluirDesafiados) return accion !== 'desafiado';
@@ -95,21 +99,23 @@ export default function Matchmaking() {
     const idsVistos = (vistos || []).map((v) => v.target_id);
 
     let query = supabase
-      .from('profiles')
-      .select('*')
-      .neq('id', user.id)
-      .eq('perfil_completo', true)
+      .from('profiles').select('*')
+      .neq('id', user.id).eq('perfil_completo', true)
       .in('deporte', deportesModo);
 
     if (profile.isla) query = query.eq('isla', profile.isla);
     else query = query.eq('provincia', profile.provincia).is('isla', null);
 
-    if (modo === 'tenis_dobles') {
-      query = query.eq('dobles_busca', doblesBusca);
+    // tenis_1v1: solo jugadores individuales (dobles_busca IS NULL)
+    if (modo === 'tenis_1v1') {
+      query = query.is('dobles_busca', null);
+    }
+    // dobles/padel: filtra por el tipo de busca
+    if (modoNecesitaFiltro) {
+      query = query.eq('dobles_busca', filtroDobles);
     }
 
     const { data, error } = await query;
-
     const reales = error ? [] : (data || []).filter((j) => !idsVistos.includes(j.id));
     const falsos = candidatosFalsos(soloExcluirDesafiados);
     setJugadores(ordenarPorDisponibilidad([...reales, ...falsos]));
@@ -120,23 +126,17 @@ export default function Matchmaking() {
     if (procesando) return;
     setProcesando(true);
     sonidoPasar();
-    if (DEMO_MODE) {
-      // no-op, ya gestionado abajo
-    } else if (esFakeId(jugador.id)) {
-      setFakeSwipe(user.id, modo, jugador.id, 'pasado');
-    } else {
-      await supabase.from('swipes').insert({ swiper_id: user.id, target_id: jugador.id, accion: 'pasado', modo });
+    if (!DEMO_MODE) {
+      if (esFakeId(jugador.id)) setFakeSwipe(user.id, modo, jugador.id, 'pasado');
+      else await supabase.from('swipes').insert({ swiper_id: user.id, target_id: jugador.id, accion: 'pasado', modo });
     }
     setJugadores((prev) => prev.filter((j) => j.id !== jugador.id));
     setProcesando(false);
   }
 
   function desafiarConPaywall(jugador) {
-    if (profile?.suscrito) {
-      desafiar(jugador);
-    } else {
-      setShowPaywall(true);
-    }
+    if (profile?.suscrito) desafiar(jugador);
+    else setShowPaywall(true);
   }
 
   async function desafiar(jugador) {
@@ -154,9 +154,7 @@ export default function Matchmaking() {
 
     if (esFakeId(jugador.id)) {
       const chat = crearFakeChat(user.id, modo, jugador);
-      // El desafío se autoacepta al instante: +10 por enviarlo, +25 por ser aceptado.
-      await supabase
-        .from('profiles')
+      await supabase.from('profiles')
         .update({ puntos: (profile.puntos || 0) + 35, desafios_enviados: (profile.desafios_enviados || 0) + 1 })
         .eq('id', user.id);
       await refreshProfile();
@@ -173,29 +171,23 @@ export default function Matchmaking() {
   }
 
   function recargar() {
-    if (DEMO_MODE) {
-      setJugadores(demoJugadores);
-      return;
-    }
+    if (DEMO_MODE) { setJugadores(demoJugadores); return; }
     limpiarFakePasados(user.id, modo);
     cargarCandidatos(true);
   }
 
-  async function cambiarDoblesBusca(valor) {
-    setDoblesBusca(valor);
-    if (!DEMO_MODE) {
-      await supabase.from('profiles').update({ dobles_busca: valor }).eq('id', user.id);
-    }
-  }
+  const hayMargen = modoNecesitaFiltro;
 
   return (
     <div className="page" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+
       <div className="page-header" style={{ padding: 0, marginBottom: 12 }}>
         <h1>Encuentra tu rival</h1>
       </div>
 
-      <div className="chip-row" style={{ marginBottom: modo === 'tenis_dobles' ? 8 : 16 }}>
+      {/* Selector de modo */}
+      <div className="chip-row" style={{ marginBottom: hayMargen ? 8 : 16 }}>
         {MODOS.map((m) => (
           <button key={m.id} className={`chip ${modo === m.id ? 'selected' : ''}`} onClick={() => setModo(m.id)}>
             {m.label}
@@ -203,13 +195,20 @@ export default function Matchmaking() {
         ))}
       </div>
 
-      {modo === 'tenis_dobles' && (
+      {/* Filtro busca — aparece en tenis dobles Y pádel */}
+      {modoNecesitaFiltro && (
         <div className="chip-row" style={{ marginBottom: 16 }}>
-          <button className={`chip ${doblesBusca === 'pareja' ? 'selected' : ''}`} onClick={() => cambiarDoblesBusca('pareja')}>
-            Busco pareja
-          </button>
-          <button className={`chip ${doblesBusca === 'rival' ? 'selected' : ''}`} onClick={() => cambiarDoblesBusca('rival')}>
+          <button
+            className={`chip ${filtroDobles === 'rival' ? 'selected' : ''}`}
+            onClick={() => setFiltroDobles('rival')}
+          >
             Busco rival
+          </button>
+          <button
+            className={`chip ${filtroDobles === 'pareja' ? 'selected' : ''}`}
+            onClick={() => setFiltroDobles('pareja')}
+          >
+            Busco pareja
           </button>
         </div>
       )}
@@ -221,9 +220,10 @@ export default function Matchmaking() {
           <div style={{ position: 'relative', flex: 1, minHeight: 420 }}>
             {jugadores.length === 0 && (
               <div className="card" style={{ textAlign: 'center', padding: 40, marginTop: 60 }}>
-                <p style={{ fontSize: 40, marginBottom: 12 }}>—</p>
                 <p style={{ fontWeight: 700, marginBottom: 6 }}>No hay más jugadores cerca</p>
-                <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 18 }}>Vuelve más tarde o cambia tu ubicación desde el perfil.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 18 }}>
+                  Vuelve más tarde o cambia tu ubicación desde el perfil.
+                </p>
                 <button className="btn-primary" onClick={recargar}>Recargar</button>
               </div>
             )}
@@ -240,20 +240,28 @@ export default function Matchmaking() {
           </div>
 
           {jugadores.length > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginTop: 18 }}>
               <button
                 onClick={() => pasar(jugadores[0])}
                 disabled={procesando}
-                style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', fontSize: 26, color: '#EF4444' }}
+                style={{
+                  flex: 1, maxWidth: 150, padding: '14px 0', borderRadius: 14,
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  fontWeight: 700, fontSize: 15, color: 'var(--text-muted)',
+                }}
               >
-                ✕
+                Ignorar
               </button>
               <button
                 onClick={() => desafiarConPaywall(jugadores[0])}
                 disabled={procesando}
-                style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--accent)', fontSize: 24, color: '#fff', fontWeight: 800 }}
+                style={{
+                  flex: 1, maxWidth: 150, padding: '14px 0', borderRadius: 14,
+                  background: 'var(--accent)', border: 'none',
+                  fontWeight: 700, fontSize: 15, color: '#fff',
+                }}
               >
-                ✓
+                Desafiar
               </button>
             </div>
           )}

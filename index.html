@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="theme-color" content="#0A0A0A" />
+<script>
+  // Aplica el tema antes de que React cargue para evitar pantalla en blanco
+  (function(){
+    var t = localStorage.getItem('meetraquet_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    document.documentElement.style.background = t === 'light' ? '#FFFFFF' : '#0A0A0A';
+  })();
+</script>
 <title>MeetRacquet | Encuentra rival, desafía y juega</title>
 <meta name="description" content="App de matchmaking deportivo para pádel y tenis en España. Encuentra rivales cerca de ti y desafíales a un partido." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
