@@ -19,7 +19,7 @@ import PagoExitoso from './pages/PagoExitoso.jsx';
 import SelectorModo from './pages/SelectorModo.jsx';
 import OnboardingModo from './pages/OnboardingModo.jsx';
 
-const RUTAS_SIN_NAV = ['/login', '/onboarding', '/pago-exitoso', '/modo'];
+const RUTAS_SIN_NAV = ['/login', '/onboarding', '/onboarding-modo', '/pago-exitoso', '/modo'];
 
 export default function App() {
   useTheme(); // aplica data-theme guardado en localStorage al cargar

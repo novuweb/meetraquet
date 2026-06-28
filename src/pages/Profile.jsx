@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useTheme } from '../hooks/useTheme';
-import { useModo, MODO_LABELS } from '../hooks/useModo.jsx';
+import { useModo, MODO_LABELS, esModoTengoPareja } from '../hooks/useModo.jsx';
 import { supabase } from '../lib/supabaseClient';
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
 import { playDing } from '../lib/sounds';
@@ -17,7 +17,6 @@ import CodigoReferido from '../components/CodigoReferido.jsx';
 import { DEMO_MODE } from '../lib/demo';
 
 const NIVELES = ['Principiante', 'Intermedio', 'Avanzado', 'Competicion'];
-const ESTILOS = ['Agresivo', 'Defensivo', 'Equilibrado', 'Completo'];
 
 function Stat({ label, value }) {
   return (
@@ -41,23 +40,53 @@ function ChipGroup({ opciones, value, onChange }) {
   );
 }
 
+function Avatar({ url, nombre, size = 80 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      backgroundImage: url ? `url(${url})` : 'none',
+      backgroundSize: 'cover', backgroundPosition: 'center',
+      background: url ? undefined : 'var(--bg-elev)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.35, fontWeight: 800, color: 'var(--text-muted)',
+      border: '2px solid var(--border)',
+    }}>
+      {!url && nombre?.[0]?.toUpperCase()}
+    </div>
+  );
+}
+
+// Campos de nivel/descripcion por deporte del modo
+function camposPorModo(modo) {
+  const esTenis = modo?.includes('tenis');
+  return {
+    nivel: esTenis ? 'nivel_tenis' : 'nivel_padel',
+    descripcion: esTenis ? 'descripcion_tenis' : 'descripcion_padel',
+  };
+}
+
 export default function Profile() {
   const { profile, user, refreshProfile, signOut, setProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { modo } = useModo();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState(null);
+  const [tabModo, setTabModo] = useState(null);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [logroSel, setLogroSel] = useState(null);
   const [form, setForm] = useState({});
+  const [fotoParejaFile, setFotoParejaFile] = useState(null);
+  const [fotoParejaPreview, setFotoParejaPreview] = useState(null);
+
+  const modoActivo = tabModo || modo || profile?.modo_activo;
+  const tienePareja = esModoTengoPareja(modoActivo);
+  const esBuscoPareja = modoActivo?.endsWith('_pareja');
+  const campos = camposPorModo(modoActivo);
 
   useEffect(() => {
-    if (profile && !tab) {
-      setTab(profile.juega_tenis ? 'tenis' : 'padel');
-    }
-  }, [profile?.id]);
+    if (profile && !tabModo) setTabModo(modo || profile.modo_activo);
+  }, [profile?.id, modo]);
 
   useEffect(() => {
     if (profile) {
@@ -65,17 +94,18 @@ export default function Profile() {
         nombre: profile.nombre || '',
         edad: profile.edad || '',
         nivel_tenis: profile.nivel_tenis || '',
-        estilo_tenis: profile.estilo_tenis || '',
         descripcion_tenis: profile.descripcion_tenis || '',
         nivel_padel: profile.nivel_padel || '',
-        estilo_padel: profile.estilo_padel || '',
         descripcion_padel: profile.descripcion_padel || '',
         pareja_nombre: profile.pareja_nombre || '',
         pareja_nivel: profile.pareja_nivel || '',
+        descripcion_equipo: profile.descripcion_equipo || '',
+        busco_pareja_desc: profile.busco_pareja_desc || '',
         provincia: profile.provincia || '',
         isla: profile.isla || '',
         disponibilidad: profile.disponibilidad || [],
       });
+      setFotoParejaPreview(profile.pareja_foto_url || null);
     }
   }, [profile?.id]);
 
@@ -101,9 +131,9 @@ export default function Profile() {
 
   const logrosConseguidos = getLogrosConseguidos(profile);
   const idsConseguidos = logrosConseguidos.map((l) => l.id);
-  const tieneDobles = profile.dobles_busca === 'rival';
+  const modosConfigurados = profile.modos_configurados || [];
 
-  async function handleFoto(e) {
+  async function handleFotoPerfil(e) {
     const file = e.target.files?.[0]; if (!file) return;
     if (DEMO_MODE) { setProfile({ ...profile, avatar_url: URL.createObjectURL(file) }); return; }
     const ext = file.name.split('.').pop();
@@ -114,63 +144,81 @@ export default function Profile() {
     await refreshProfile();
   }
 
+  function handleFotoPareja(e) {
+    const f = e.target.files?.[0]; if (!f) return;
+    setFotoParejaFile(f);
+    setFotoParejaPreview(URL.createObjectURL(f));
+  }
+
   async function guardar() {
     setGuardando(true);
-    if (DEMO_MODE) { setProfile({ ...profile, ...form }); setGuardando(false); setEditando(false); return; }
-    const cambioUbicacion = form.provincia !== profile.provincia || form.isla !== profile.isla;
-    if (cambioUbicacion) {
-      await supabase.rpc('cambiar_ubicacion', {
-        p_provincia: form.provincia,
-        p_isla: esProvinciaCanaria(form.provincia) ? form.isla : null,
-      });
+    try {
+      let pareja_foto_url = profile.pareja_foto_url;
+      if (fotoParejaFile) {
+        const ext = fotoParejaFile.name.split('.').pop();
+        const path = `${user.id}/pareja.${ext}`;
+        await supabase.storage.from('avatars').upload(path, fotoParejaFile, { upsert: true });
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+        pareja_foto_url = data.publicUrl;
+      }
+
+      const cambioUbicacion = form.provincia !== profile.provincia || form.isla !== profile.isla;
+      if (cambioUbicacion) {
+        await supabase.rpc('cambiar_ubicacion', {
+          p_provincia: form.provincia,
+          p_isla: esProvinciaCanaria(form.provincia) ? form.isla : null,
+        });
+      }
+
+      await supabase.from('profiles').update({
+        nombre: form.nombre,
+        edad: Number(form.edad),
+        disponibilidad: form.disponibilidad || [],
+        nivel_tenis: form.nivel_tenis || null,
+        descripcion_tenis: form.descripcion_tenis || null,
+        nivel_padel: form.nivel_padel || null,
+        descripcion_padel: form.descripcion_padel || null,
+        pareja_nombre: form.pareja_nombre || null,
+        pareja_nivel: form.pareja_nivel || null,
+        pareja_foto_url,
+        descripcion_equipo: form.descripcion_equipo || null,
+        busco_pareja_desc: form.busco_pareja_desc || null,
+      }).eq('id', user.id);
+
+      await refreshProfile();
+      setEditando(false);
+      setFotoParejaFile(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGuardando(false);
     }
-    await supabase.from('profiles').update({
-      nombre: form.nombre,
-      edad: Number(form.edad),
-      disponibilidad: form.disponibilidad || [],
-      nivel_tenis: form.nivel_tenis || null,
-      estilo_tenis: form.estilo_tenis || null,
-      descripcion_tenis: form.descripcion_tenis || null,
-      nivel_padel: form.nivel_padel || null,
-      estilo_padel: form.estilo_padel || null,
-      descripcion_padel: form.descripcion_padel || null,
-      pareja_nombre: form.pareja_nombre || null,
-      pareja_nivel: form.pareja_nivel || null,
-    }).eq('id', user.id);
-    await refreshProfile();
-    setGuardando(false);
-    setEditando(false);
   }
 
   const dispText = profile.disponibilidad?.length
     ? profile.disponibilidad.map(labelDisponibilidad).filter(Boolean).join(', ')
     : '—';
 
+  const nivelActivo = profile[campos.nivel] || '—';
+  const descActiva = profile[campos.descripcion] || '';
+
   return (
     <div className="page">
+      {/* Header con modo activo */}
       <div className="page-header" style={{ padding: 0, marginBottom: 18 }}>
         <h1>Mi perfil</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{modo ? MODO_LABELS[modo] : ''}</span>
-          <button className="chip" onClick={() => navigate('/modo')} style={{ fontSize: 12 }}>Cambiar</button>
-        </div>
+        <button className="chip" onClick={() => navigate('/modo')} style={{ fontSize: 12 }}>
+          {modoActivo ? MODO_LABELS[modoActivo] : 'Elegir modo'}
+        </button>
       </div>
 
-      {/* Foto + info */}
+      {/* Foto + info principal */}
       <div className="card" style={{ textAlign: 'center', marginBottom: 18 }}>
         <label htmlFor="foto-perfil" style={{ cursor: 'pointer' }}>
-          <div className="avatar" style={{
-            width: 96, height: 96, margin: '0 auto 10px',
-            backgroundImage: profile.avatar_url ? `url(${profile.avatar_url})` : 'none',
-            backgroundSize: 'cover', backgroundPosition: 'center',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 30, fontWeight: 800,
-          }}>
-            {!profile.avatar_url && profile.nombre?.[0]?.toUpperCase()}
-          </div>
-          <p style={{ fontSize: 12, color: 'var(--accent)', marginBottom: 8 }}>Cambiar foto</p>
+          <Avatar url={profile.avatar_url} nombre={profile.nombre} size={96} />
+          <p style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, marginBottom: 8 }}>Cambiar foto</p>
         </label>
-        <input id="foto-perfil" type="file" accept="image/*" onChange={handleFoto} style={{ display: 'none' }} />
+        <input id="foto-perfil" type="file" accept="image/*" onChange={handleFotoPerfil} style={{ display: 'none' }} />
         <h2 style={{ fontSize: 21 }}>{profile.nombre}, {profile.edad}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{ubicacionLabel(profile.provincia, profile.isla)}</p>
         <p style={{ marginTop: 6, fontSize: 14 }}><strong>{rango.nombre}</strong> · {puntosAnimados} pts</p>
@@ -194,61 +242,65 @@ export default function Profile() {
         <Stat label="Racha" value={profile.racha_actual} />
       </div>
 
-      {/* Tabs deportes */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        {profile.juega_tenis && (
-          <button className={`chip ${tab === 'tenis' ? 'selected' : ''}`} onClick={() => { setTab('tenis'); setEditando(false); }}>Tenis</button>
-        )}
-        {profile.juega_padel && (
-          <button className={`chip ${tab === 'padel' ? 'selected' : ''}`} onClick={() => { setTab('padel'); setEditando(false); }}>Padel</button>
-        )}
+      {/* Tabs de modos configurados */}
+      {modosConfigurados.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          {modosConfigurados.map((m) => (
+            <button key={m} className={`chip ${tabModo === m ? 'selected' : ''}`}
+              onClick={() => { setTabModo(m); setEditando(false); }}
+              style={{ fontSize: 12 }}
+            >{MODO_LABELS[m] || m}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Info del modo activo */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontWeight: 700, fontSize: 15 }}>{MODO_LABELS[modoActivo] || modoActivo || 'Perfil'}</p>
         <button
           onClick={() => setEditando(!editando)}
-          style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--accent)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+          style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
         >{editando ? 'Cancelar' : 'Editar'}</button>
       </div>
 
-      {/* Vista de datos del deporte */}
       {!editando && (
         <div className="card" style={{ marginBottom: 18 }}>
-          {tab === 'tenis' && (
+          <p style={{ marginBottom: 8 }}><strong>Nivel:</strong> {nivelActivo}</p>
+          {descActiva && <p style={{ marginBottom: 8, color: 'var(--text-muted)', fontSize: 14 }}>{descActiva}</p>}
+
+          {esBuscoPareja && profile.busco_pareja_desc && (
             <>
-              <p style={{ marginBottom: 8 }}><strong>Nivel:</strong> {profile.nivel_tenis || '—'}</p>
-              <p style={{ marginBottom: 8 }}><strong>Estilo:</strong> {profile.estilo_tenis || '—'}</p>
-              {profile.descripcion_tenis && <p style={{ marginBottom: 8, color: 'var(--text-muted)', fontSize: 14 }}>{profile.descripcion_tenis}</p>}
-              {tieneDobles && profile.pareja_nombre && (
-                <>
-                  <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '12px 0' }} />
-                  <p style={{ fontWeight: 700, marginBottom: 8 }}>Mi pareja</p>
-                  <p style={{ marginBottom: 4 }}><strong>Nombre:</strong> {profile.pareja_nombre}</p>
-                  <p><strong>Nivel:</strong> {profile.pareja_nivel || '—'}</p>
-                </>
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '12px 0' }} />
+              <p style={{ fontWeight: 700, marginBottom: 6 }}>Que busco en una pareja</p>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>{profile.busco_pareja_desc}</p>
+            </>
+          )}
+
+          {tienePareja && (
+            <>
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '12px 0' }} />
+              <p style={{ fontWeight: 700, marginBottom: 10 }}>Mi pareja</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <Avatar url={profile.pareja_foto_url} nombre={profile.pareja_nombre} size={56} />
+                <div>
+                  <p style={{ fontWeight: 600 }}>{profile.pareja_nombre || '—'}</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nivel: {profile.pareja_nivel || '—'}</p>
+                </div>
+              </div>
+              {profile.descripcion_equipo && (
+                <p style={{ marginTop: 10, fontSize: 14, color: 'var(--text-muted)' }}>{profile.descripcion_equipo}</p>
               )}
             </>
           )}
-          {tab === 'padel' && (
-            <>
-              <p style={{ marginBottom: 8 }}><strong>Nivel:</strong> {profile.nivel_padel || '—'}</p>
-              <p style={{ marginBottom: 8 }}><strong>Estilo:</strong> {profile.estilo_padel || '—'}</p>
-              {profile.descripcion_padel && <p style={{ marginBottom: 8, color: 'var(--text-muted)', fontSize: 14 }}>{profile.descripcion_padel}</p>}
-              {tieneDobles && profile.pareja_nombre && (
-                <>
-                  <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '12px 0' }} />
-                  <p style={{ fontWeight: 700, marginBottom: 8 }}>Mi pareja</p>
-                  <p style={{ marginBottom: 4 }}><strong>Nombre:</strong> {profile.pareja_nombre}</p>
-                  <p><strong>Nivel:</strong> {profile.pareja_nivel || '—'}</p>
-                </>
-              )}
-            </>
-          )}
+
           <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '12px 0' }} />
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}><strong>Disponibilidad:</strong> {dispText}</p>
         </div>
       )}
 
-      {/* Form de edicion */}
       {editando && (
         <div className="card" style={{ marginBottom: 18 }}>
+          {/* Datos comunes */}
           <div className="form-group">
             <label>Nombre</label>
             <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
@@ -258,61 +310,49 @@ export default function Profile() {
             <input type="number" value={form.edad} onChange={(e) => setForm({ ...form, edad: e.target.value })} />
           </div>
 
-          {tab === 'tenis' && (
-            <>
-              <div className="form-group">
-                <label>Nivel tenis</label>
-                <ChipGroup opciones={NIVELES} value={form.nivel_tenis} onChange={(v) => setForm({ ...form, nivel_tenis: v })} />
-              </div>
-              <div className="form-group">
-                <label>Estilo tenis</label>
-                <ChipGroup opciones={ESTILOS} value={form.estilo_tenis} onChange={(v) => setForm({ ...form, estilo_tenis: v })} />
-              </div>
-              <div className="form-group">
-                <label>Descripcion tenis</label>
-                <textarea rows={2} maxLength={150} value={form.descripcion_tenis} onChange={(e) => setForm({ ...form, descripcion_tenis: e.target.value })} />
-              </div>
-              {tieneDobles && (
-                <>
-                  <div className="form-group">
-                    <label>Nombre pareja</label>
-                    <input value={form.pareja_nombre} onChange={(e) => setForm({ ...form, pareja_nombre: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label>Nivel pareja</label>
-                    <ChipGroup opciones={NIVELES} value={form.pareja_nivel} onChange={(v) => setForm({ ...form, pareja_nivel: v })} />
-                  </div>
-                </>
-              )}
-            </>
+          {/* Datos del modo */}
+          <div className="form-group">
+            <label>Nivel</label>
+            <ChipGroup opciones={NIVELES} value={form[campos.nivel]} onChange={(v) => setForm({ ...form, [campos.nivel]: v })} />
+          </div>
+          <div className="form-group">
+            <label>Descripcion</label>
+            <textarea rows={2} maxLength={150} value={form[campos.descripcion]} onChange={(e) => setForm({ ...form, [campos.descripcion]: e.target.value })} />
+          </div>
+
+          {esBuscoPareja && (
+            <div className="form-group">
+              <label>Que buscas en una pareja</label>
+              <textarea rows={2} maxLength={150} value={form.busco_pareja_desc} onChange={(e) => setForm({ ...form, busco_pareja_desc: e.target.value })} placeholder="Describe el companero ideal..." />
+            </div>
           )}
 
-          {tab === 'padel' && (
+          {tienePareja && (
             <>
               <div className="form-group">
-                <label>Nivel padel</label>
-                <ChipGroup opciones={NIVELES} value={form.nivel_padel} onChange={(v) => setForm({ ...form, nivel_padel: v })} />
+                <label>Nombre de tu pareja</label>
+                <input value={form.pareja_nombre} onChange={(e) => setForm({ ...form, pareja_nombre: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>Estilo padel</label>
-                <ChipGroup opciones={ESTILOS} value={form.estilo_padel} onChange={(v) => setForm({ ...form, estilo_padel: v })} />
+                <label>Foto de tu pareja</label>
+                <label htmlFor="foto-pareja" style={{ cursor: 'pointer', display: 'block' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Avatar url={fotoParejaPreview} nombre={form.pareja_nombre} size={52} />
+                    <span style={{ fontSize: 13, color: 'var(--accent)' }}>
+                      {fotoParejaPreview ? 'Cambiar foto' : 'Subir foto (opcional)'}
+                    </span>
+                  </div>
+                  <input id="foto-pareja" type="file" accept="image/*" onChange={handleFotoPareja} style={{ display: 'none' }} />
+                </label>
               </div>
               <div className="form-group">
-                <label>Descripcion padel</label>
-                <textarea rows={2} maxLength={150} value={form.descripcion_padel} onChange={(e) => setForm({ ...form, descripcion_padel: e.target.value })} />
+                <label>Nivel de tu pareja</label>
+                <ChipGroup opciones={NIVELES} value={form.pareja_nivel} onChange={(v) => setForm({ ...form, pareja_nivel: v })} />
               </div>
-              {tieneDobles && (
-                <>
-                  <div className="form-group">
-                    <label>Nombre pareja</label>
-                    <input value={form.pareja_nombre} onChange={(e) => setForm({ ...form, pareja_nombre: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label>Nivel pareja</label>
-                    <ChipGroup opciones={NIVELES} value={form.pareja_nivel} onChange={(v) => setForm({ ...form, pareja_nivel: v })} />
-                  </div>
-                </>
-              )}
+              <div className="form-group">
+                <label>Descripcion del equipo</label>
+                <textarea rows={2} maxLength={150} value={form.descripcion_equipo} onChange={(e) => setForm({ ...form, descripcion_equipo: e.target.value })} placeholder="Cuentanos algo sobre vosotros como equipo..." />
+              </div>
             </>
           )}
 
@@ -345,6 +385,15 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Añadir otro modo */}
+      <button
+        className="btn-outline"
+        style={{ width: '100%', marginBottom: 18 }}
+        onClick={() => navigate('/modo')}
+      >
+        Configurar otro modo de juego
+      </button>
+
       <CodigoReferido profile={profile} />
       <HistorialPartidos profile={profile} userId={user?.id} />
 
@@ -362,11 +411,9 @@ export default function Profile() {
       {/* Ajustes */}
       <div className="card" style={{ marginBottom: 18 }}>
         <p style={{ fontWeight: 700, marginBottom: 14 }}>Ajustes</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button className="chip" onClick={toggleTheme} style={{ alignSelf: 'flex-start' }}>
-            {theme === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'}
-          </button>
-        </div>
+        <button className="chip" onClick={toggleTheme}>
+          {theme === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'}
+        </button>
       </div>
 
       <button className="btn-danger" style={{ width: '100%', marginBottom: 32 }} onClick={signOut}>
