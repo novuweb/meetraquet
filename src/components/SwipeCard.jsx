@@ -2,36 +2,38 @@ import { useRef, useState } from 'react';
 import { getRango } from '../lib/ranks';
 import { getLogrosDestacados } from '../lib/achievements';
 import { ubicacionLabel } from '../lib/provincias';
-import { iconoDisponibilidad } from '../lib/disponibilidad';
+import { labelDisponibilidad } from '../lib/disponibilidad';
 
-function Avatar({ perfil, side }) {
+function AvatarBox({ avatarUrl, nombre, side }) {
   return (
     <div style={{
       flex: 1,
-      backgroundImage: perfil.avatar_url ? `url(${perfil.avatar_url})` : 'none',
+      backgroundImage: avatarUrl ? `url(${avatarUrl})` : 'none',
       backgroundColor: 'var(--bg-elev)',
       backgroundSize: 'cover',
       backgroundPosition: 'center top',
       borderRight: side === 'left' ? '1px solid rgba(255,255,255,.1)' : 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {!perfil.avatar_url && (
+      {!avatarUrl && (
         <span style={{ fontSize: 52, fontWeight: 800, color: 'var(--text-muted)' }}>
-          {perfil.nombre?.[0]?.toUpperCase()}
+          {nombre?.[0]?.toUpperCase()}
         </span>
       )}
     </div>
   );
 }
 
-// Carta estilo Tinder con soporte de gestos táctiles (swipe) y botones.
 export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
   const [drag, setDrag] = useState({ x: 0, active: false });
   const startX = useRef(0);
 
-  const esPareja = !!jugador.jugador2;
+  const esFalsaPareja = !!jugador.jugador2;
+  const esRealPareja = !esFalsaPareja && !!jugador.pareja_nombre;
+  const esPareja = esFalsaPareja || esRealPareja;
+
   const rango = getRango(jugador.puntos);
-  const logros = getLogrosDestacados(esPareja ? jugador.jugador1 : jugador, 3);
+  const logros = getLogrosDestacados(esFalsaPareja ? jugador.jugador1 : jugador, 3);
 
   function handleStart(clientX) {
     if (!esTop) return;
@@ -53,6 +55,8 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
   const opacidadLike = Math.min(Math.max(drag.x / 110, 0), 1);
   const opacidadNope = Math.min(Math.max(-drag.x / 110, 0), 1);
 
+  const nivelMostrar = jugador.nivel_tenis || jugador.nivel_padel || jugador.nivel || '';
+
   return (
     <div
       className="card"
@@ -64,20 +68,22 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
       onTouchMove={(e) => handleMove(e.touches[0].clientX)}
       onTouchEnd={handleEnd}
       style={{
-        position: 'absolute',
-        inset: 0,
-        padding: 0,
-        overflow: 'hidden',
+        position: 'absolute', inset: 0, padding: 0, overflow: 'hidden',
         transform: `translateX(${drag.x}px) rotate(${rotacion}deg)`,
         transition: drag.active ? 'none' : 'transform .3s ease',
         userSelect: 'none',
         cursor: esTop ? 'grab' : 'default',
       }}
     >
-      {esPareja ? (
+      {esFalsaPareja ? (
         <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
-          <Avatar perfil={jugador.jugador1} side="left" />
-          <Avatar perfil={jugador.jugador2} side="right" />
+          <AvatarBox avatarUrl={jugador.jugador1.avatar_url} nombre={jugador.jugador1.nombre} side="left" />
+          <AvatarBox avatarUrl={jugador.jugador2.avatar_url} nombre={jugador.jugador2.nombre} side="right" />
+        </div>
+      ) : esRealPareja ? (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+          <AvatarBox avatarUrl={jugador.avatar_url} nombre={jugador.nombre} side="left" />
+          <AvatarBox avatarUrl={jugador.pareja_foto_url} nombre={jugador.pareja_nombre} side="right" />
         </div>
       ) : (
         <div style={{
@@ -105,35 +111,50 @@ export default function SwipeCard({ jugador, onPasar, onDesafiar, esTop }) {
       </div>
 
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 20px 24px', color: '#fff' }}>
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-          {logros.map((l) => (
-            <span key={l.id} className="badge" style={{ background: 'rgba(255,255,255,.15)', borderColor: 'rgba(255,255,255,.25)', color: '#fff' }}>
-              {l.icono} {l.nombre}
-            </span>
-          ))}
-        </div>
-
-        <h2 style={{ fontSize: esPareja ? 22 : 30, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {jugador.nombre}
-          {!esPareja && `, ${jugador.edad}`}
-          <span className="badge" style={{ background: 'rgba(255,255,255,.15)', borderColor: 'rgba(255,255,255,.25)', color: '#fff', fontSize: 11 }}>
-            {rango.nombre}
-          </span>
-        </h2>
-        <p style={{ fontSize: 14, opacity: .9, marginTop: 4 }}>
-          {jugador.deporte} · {jugador.nivel} · {ubicacionLabel(jugador.provincia, jugador.isla)}
-        </p>
-        {jugador.disponibilidad?.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-            {jugador.disponibilidad.map((d) => (
-              <span key={d} style={{ fontSize: 11, background: 'rgba(255,255,255,.15)', borderRadius: 6, padding: '2px 7px', color: '#fff' }}>
-                {iconoDisponibilidad(d)}
+        {logros.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+            {logros.map((l) => (
+              <span key={l.id} className="badge" style={{ background: 'rgba(255,255,255,.15)', borderColor: 'rgba(255,255,255,.25)', color: '#fff' }}>
+                {l.icono} {l.nombre}
               </span>
             ))}
           </div>
         )}
-        {!esPareja && jugador.descripcion && (
-          <p style={{ fontSize: 14, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>{jugador.descripcion}</p>
+
+        <h2 style={{ fontSize: esPareja ? 20 : 28, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {esFalsaPareja
+            ? jugador.nombre
+            : esRealPareja
+              ? `${jugador.nombre} & ${jugador.pareja_nombre}`
+              : `${jugador.nombre}, ${jugador.edad}`
+          }
+          <span className="badge" style={{ background: 'rgba(255,255,255,.15)', borderColor: 'rgba(255,255,255,.25)', color: '#fff', fontSize: 11 }}>
+            {rango.nombre}
+          </span>
+        </h2>
+
+        <p style={{ fontSize: 14, opacity: .9, marginTop: 4 }}>
+          {nivelMostrar && `${nivelMostrar} · `}
+          {ubicacionLabel(jugador.provincia, jugador.isla)}
+        </p>
+
+        {jugador.disponibilidad?.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+            {jugador.disponibilidad.map((d) => (
+              <span key={d} style={{ fontSize: 11, background: 'rgba(255,255,255,.15)', borderRadius: 6, padding: '2px 7px', color: '#fff' }}>
+                {labelDisponibilidad(d)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {!esPareja && (jugador.descripcion || jugador.descripcion_tenis || jugador.descripcion_padel) && (
+          <p style={{ fontSize: 13, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>
+            {jugador.descripcion || jugador.descripcion_tenis || jugador.descripcion_padel}
+          </p>
+        )}
+        {esRealPareja && jugador.descripcion_equipo && (
+          <p style={{ fontSize: 13, marginTop: 10, opacity: .85, lineHeight: 1.5 }}>{jugador.descripcion_equipo}</p>
         )}
       </div>
     </div>

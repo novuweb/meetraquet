@@ -17,6 +17,7 @@ import Profile from './pages/Profile.jsx';
 import PlayerProfile from './pages/PlayerProfile.jsx';
 import PagoExitoso from './pages/PagoExitoso.jsx';
 import SelectorModo from './pages/SelectorModo.jsx';
+import OnboardingModo from './pages/OnboardingModo.jsx';
 
 const RUTAS_SIN_NAV = ['/login', '/onboarding', '/pago-exitoso', '/modo'];
 
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/onboarding" element={<ProtectedRoute requireCompleteProfile={false}><Onboarding /></ProtectedRoute>} />
             <Route path="/modo" element={<ProtectedRoute><SelectorModo /></ProtectedRoute>} />
+            <Route path="/onboarding-modo" element={<ProtectedRoute requireCompleteProfile={false}><OnboardingModo /></ProtectedRoute>} />
             <Route path="/" element={<ProtectedRoute><Matchmaking /></ProtectedRoute>} />
             <Route path="/mensajes" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
             <Route path="/chat/:chatId" element={<ProtectedRoute><ChatRoom /></ProtectedRoute>} />

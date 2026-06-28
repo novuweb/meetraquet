@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { useModo, MODO_LABELS } from '../hooks/useModo.jsx';
+import { useModo, MODO_LABELS, esModoTengoPareja } from '../hooks/useModo.jsx';
 import { supabase } from '../lib/supabaseClient';
 import { ubicacionKey } from '../lib/provincias';
 import SwipeCard from '../components/SwipeCard.jsx';
@@ -9,7 +9,6 @@ import { DEMO_MODE } from '../lib/demo';
 import { demoJugadores, crearChatDemo } from '../lib/demoData';
 import { PERFILES_FALSOS } from '../lib/perfilesFalsos';
 import { getFakeSwipes, setFakeSwipe, crearFakeChat, limpiarFakePasados } from '../lib/fakeMatches';
-import { getModo } from '../lib/modos';
 import { solapeDisponibilidad } from '../lib/disponibilidad';
 import { sonidoDesafio, sonidoPasar } from '../lib/sounds';
 import PaywallModal from '../components/PaywallModal.jsx';
@@ -19,22 +18,23 @@ const esFakeId = (id) => typeof id === 'string' && (id.startsWith('fake-') || id
 export default function Matchmaking() {
   const { profile, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const { modo, subModo, cambiarSubModo } = useModo();
+  const { modo } = useModo();
 
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
 
-  const modoNecesitaFiltro = modo === 'tenis_dobles' || modo === 'padel';
+  const modoLabel = modo ? (MODO_LABELS[modo] || modo) : 'Sin modo';
+  const esParejaModo = esModoTengoPareja(modo);
 
   useEffect(() => {
     if (!modo) { navigate('/modo'); return; }
     if (DEMO_MODE) { setJugadores(demoJugadores); setCargando(false); return; }
     if (profile) cargarCandidatos();
-  }, [profile?.id, modo, subModo]);
+  }, [profile?.id, modo]);
 
-  function ordenarPorDisponibilidad(lista) {
+  function ordenar(lista) {
     return [...lista].sort((a, b) =>
       solapeDisponibilidad(b.disponibilidad, profile.disponibilidad) -
       solapeDisponibilidad(a.disponibilidad, profile.disponibilidad)
@@ -44,13 +44,16 @@ export default function Matchmaking() {
   function candidatosFalsos(soloExcluirDesafiados = false) {
     const zona = ubicacionKey(profile.provincia, profile.isla);
     const swipes = getFakeSwipes(user.id, modo);
-    const deportesModo = getModo(modo).deportes;
 
-    const base = PERFILES_FALSOS.filter((f) => {
-      return ubicacionKey(f.provincia, f.isla) === zona && deportesModo.includes(f.deporte);
-    });
+    const deportesModo = modo.includes('tenis')
+      ? ['Tenis', 'Ambos']
+      : ['Pádel', 'Ambos'];
 
-    if (modo === 'tenis_dobles' || modo === 'padel') {
+    const base = PERFILES_FALSOS.filter((f) =>
+      ubicacionKey(f.provincia, f.isla) === zona && deportesModo.includes(f.deporte)
+    );
+
+    if (esParejaModo) {
       const parejas = [];
       for (let i = 0; i + 1 < base.length; i += 2) {
         const p1 = base[i], p2 = base[i + 1];
@@ -62,9 +65,11 @@ export default function Matchmaking() {
           id: pairId, jugador1: p1, jugador2: p2,
           nombre: `${p1.nombre.split(' ')[0]} & ${p2.nombre.split(' ')[0]}`,
           edad: p1.edad, puntos: Math.round((p1.puntos + p2.puntos) / 2),
-          deporte: p1.deporte, nivel: `${p1.nivel} · ${p2.nivel}`,
+          deporte: p1.deporte, nivel: `${p1.nivel} / ${p2.nivel}`,
           provincia: p1.provincia, isla: p1.isla,
-          disponibilidad: p1.disponibilidad || [], descripcion: p1.descripcion, avatar_url: null,
+          disponibilidad: p1.disponibilidad || [],
+          descripcion: p1.descripcion, avatar_url: null,
+          modo_activo: modo,
         });
       }
       return parejas;
@@ -72,9 +77,8 @@ export default function Matchmaking() {
 
     return base.filter((f) => {
       const accion = swipes[f.id];
-      if (soloExcluirDesafiados) return accion !== 'desafiado';
-      return !accion;
-    });
+      return soloExcluirDesafiados ? accion !== 'desafiado' : !accion;
+    }).map(f => ({ ...f, modo_activo: modo }));
   }
 
   async function cargarCandidatos(soloExcluirDesafiados = false) {
@@ -85,25 +89,17 @@ export default function Matchmaking() {
     const { data: vistos } = await queryVistos;
     const idsVistos = (vistos || []).map((v) => v.target_id);
 
-    let query = supabase
-      .from('profiles').select('*')
-      .neq('id', user.id).eq('perfil_completo', true);
+    let query = supabase.from('profiles').select('*')
+      .neq('id', user.id)
+      .eq('perfil_completo', true)
+      .eq('modo_activo', modo);
 
     if (profile.isla) query = query.eq('isla', profile.isla);
     else query = query.eq('provincia', profile.provincia).is('isla', null);
 
-    if (modo === 'tenis_1v1') {
-      query = query.eq('juega_tenis', true).is('dobles_busca', null);
-    } else if (modo === 'tenis_dobles') {
-      query = query.eq('juega_tenis', true).not('dobles_busca', 'is', null).eq('dobles_busca', subModo);
-    } else if (modo === 'padel') {
-      query = query.eq('juega_padel', true).not('dobles_busca', 'is', null).eq('dobles_busca', subModo);
-    }
-
     const { data, error } = await query;
     const reales = error ? [] : (data || []).filter((j) => !idsVistos.includes(j.id));
-    const falsos = candidatosFalsos(soloExcluirDesafiados);
-    setJugadores(ordenarPorDisponibilidad([...reales, ...falsos]));
+    setJugadores(ordenar([...reales, ...candidatosFalsos(soloExcluirDesafiados)]));
     setCargando(false);
   }
 
@@ -139,9 +135,10 @@ export default function Matchmaking() {
 
     if (esFakeId(jugador.id)) {
       const chat = crearFakeChat(user.id, modo, jugador);
-      await supabase.from('profiles')
-        .update({ puntos: (profile.puntos || 0) + 35, desafios_enviados: (profile.desafios_enviados || 0) + 1 })
-        .eq('id', user.id);
+      await supabase.from('profiles').update({
+        puntos: (profile.puntos || 0) + 35,
+        desafios_enviados: (profile.desafios_enviados || 0) + 1,
+      }).eq('id', user.id);
       await refreshProfile();
       setJugadores((prev) => prev.filter((j) => j.id !== jugador.id));
       setProcesando(false);
@@ -165,31 +162,13 @@ export default function Matchmaking() {
     <div className="page" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
 
-      <div className="page-header" style={{ padding: 0, marginBottom: 12 }}>
-        <h1 style={{ flex: 1 }}>Encuentra tu rival</h1>
-        <button
-          type="button"
-          onClick={() => navigate('/modo')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-            borderRadius: 20, border: '1.5px solid var(--accent)', background: 'transparent',
-            cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--accent)',
-          }}
-        >
-          {modo ? MODO_LABELS[modo] : 'Elegir modo'}
-        </button>
-      </div>
-
-      {modoNecesitaFiltro && (
-        <div className="chip-row" style={{ marginBottom: 16 }}>
-          <button className={`chip ${subModo === 'rival' ? 'selected' : ''}`} onClick={() => cambiarSubModo('rival')}>
-            Busco rival
-          </button>
-          <button className={`chip ${subModo === 'pareja' ? 'selected' : ''}`} onClick={() => cambiarSubModo('pareja')}>
-            Busco pareja
-          </button>
+      <div className="page-header" style={{ padding: 0, marginBottom: 16 }}>
+        <div>
+          <h1 style={{ marginBottom: 2 }}>Matchmaking</h1>
+          <p style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{modoLabel}</p>
         </div>
-      )}
+        <button className="chip" onClick={() => navigate('/modo')}>Cambiar modo</button>
+      </div>
 
       {cargando ? (
         <div className="center-screen"><div className="spinner" /></div>
@@ -198,14 +177,13 @@ export default function Matchmaking() {
           <div style={{ position: 'relative', flex: 1, minHeight: 420 }}>
             {jugadores.length === 0 && (
               <div className="card" style={{ textAlign: 'center', padding: 40, marginTop: 60 }}>
-                <p style={{ fontWeight: 700, marginBottom: 6 }}>No hay más jugadores cerca</p>
+                <p style={{ fontWeight: 700, marginBottom: 6 }}>No hay mas jugadores cerca</p>
                 <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 18 }}>
-                  Vuelve más tarde o cambia tu ubicación desde el perfil.
+                  Vuelve mas tarde o cambia de modo.
                 </p>
                 <button className="btn-primary" onClick={recargar}>Recargar</button>
               </div>
             )}
-
             {jugadores.slice(0, 3).reverse().map((jugador, idx, arr) => (
               <SwipeCard
                 key={jugador.id}
@@ -220,27 +198,21 @@ export default function Matchmaking() {
           {jugadores.length > 0 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginTop: 18 }}>
               <button
-                onClick={() => pasar(jugadores[0])}
-                disabled={procesando}
+                onClick={() => pasar(jugadores[0])} disabled={procesando}
                 style={{
                   flex: 1, maxWidth: 150, padding: '14px 0', borderRadius: 14,
                   background: 'var(--bg-card)', border: '1px solid var(--border)',
                   fontWeight: 700, fontSize: 15, color: 'var(--text-muted)',
                 }}
-              >
-                Ignorar
-              </button>
+              >Ignorar</button>
               <button
-                onClick={() => desafiarConPaywall(jugadores[0])}
-                disabled={procesando}
+                onClick={() => desafiarConPaywall(jugadores[0])} disabled={procesando}
                 style={{
                   flex: 1, maxWidth: 150, padding: '14px 0', borderRadius: 14,
                   background: 'var(--accent)', border: 'none',
                   fontWeight: 700, fontSize: 15, color: '#fff',
                 }}
-              >
-                Desafiar
-              </button>
+              >Desafiar</button>
             </div>
           )}
         </>
