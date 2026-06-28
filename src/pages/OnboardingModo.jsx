@@ -137,7 +137,7 @@ export default function OnboardingModo() {
       }
 
       const modos_conf = Array.from(new Set([...(profile?.modos_configurados || []), modo]));
-      const dobles_busca = esTienePareja ? 'rival' : esBuscaPareja ? 'pareja' : null;
+      const dobles_busca = esTienePareja ? 'rival' : esBuscaPareja ? 'pareja' : 'individual';
 
       const updates = {
         modo_activo: modo,

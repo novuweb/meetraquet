@@ -256,7 +256,7 @@ export default function Onboarding() {
         padel_pareja_edad: (tienePadel && padelModo === 'dobles_rival') ? Number(padelParejaEdad) : null,
         padel_pareja_foto_url,
         padel_foto_juntos_url,
-        dobles_busca: modo_activo?.endsWith('_rival') ? 'rival' : modo_activo?.endsWith('_pareja') ? 'pareja' : null,
+        dobles_busca: modo_activo?.endsWith('_rival') ? 'rival' : modo_activo?.endsWith('_pareja') ? 'pareja' : 'individual',
         perfil_completo: true,
         puntos: 0,
       }).eq('id', user.id);
