@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useTheme } from './hooks/useTheme';
 import { useAuth } from './hooks/useAuth.jsx';
+import { ModoProvider } from './hooks/useModo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import Tutorial, { tutorialYaVisto } from './components/Tutorial.jsx';
@@ -15,8 +16,9 @@ import ClubsPage from './pages/ClubsPage.jsx';
 import Profile from './pages/Profile.jsx';
 import PlayerProfile from './pages/PlayerProfile.jsx';
 import PagoExitoso from './pages/PagoExitoso.jsx';
+import SelectorModo from './pages/SelectorModo.jsx';
 
-const RUTAS_SIN_NAV = ['/login', '/onboarding', '/pago-exitoso'];
+const RUTAS_SIN_NAV = ['/login', '/onboarding', '/pago-exitoso', '/modo'];
 
 export default function App() {
   useTheme(); // aplica data-theme guardado en localStorage al cargar
@@ -36,23 +38,26 @@ export default function App() {
   }, [profile?.perfil_completo, user?.id]);
 
   return (
-    <div className="app-shell">
-      <div className="scroll-area">
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/onboarding" element={<ProtectedRoute requireCompleteProfile={false}><Onboarding /></ProtectedRoute>} />
-          <Route path="/" element={<ProtectedRoute><Matchmaking /></ProtectedRoute>} />
-          <Route path="/mensajes" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-          <Route path="/chat/:chatId" element={<ProtectedRoute><ChatRoom /></ProtectedRoute>} />
-          <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
-          <Route path="/clubs" element={<ProtectedRoute><ClubsPage /></ProtectedRoute>} />
-          <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/jugador/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
-          <Route path="/pago-exitoso" element={<PagoExitoso />} />
-        </Routes>
+    <ModoProvider>
+      <div className="app-shell">
+        <div className="scroll-area">
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/onboarding" element={<ProtectedRoute requireCompleteProfile={false}><Onboarding /></ProtectedRoute>} />
+            <Route path="/modo" element={<ProtectedRoute><SelectorModo /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute><Matchmaking /></ProtectedRoute>} />
+            <Route path="/mensajes" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            <Route path="/chat/:chatId" element={<ProtectedRoute><ChatRoom /></ProtectedRoute>} />
+            <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
+            <Route path="/clubs" element={<ProtectedRoute><ClubsPage /></ProtectedRoute>} />
+            <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/jugador/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
+            <Route path="/pago-exitoso" element={<PagoExitoso />} />
+          </Routes>
+        </div>
+        {mostrarNav && <BottomNav />}
+        {tutorialVisible && <Tutorial uid={user?.id} onFinish={() => setTutorialVisible(false)} />}
       </div>
-      {mostrarNav && <BottomNav />}
-      {tutorialVisible && <Tutorial uid={user?.id} onFinish={() => setTutorialVisible(false)} />}
-    </div>
+    </ModoProvider>
   );
 }

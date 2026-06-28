@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useModo, MODO_LABELS } from '../hooks/useModo.jsx';
 import { supabase } from '../lib/supabaseClient';
 import { ubicacionKey } from '../lib/provincias';
 import SwipeCard from '../components/SwipeCard.jsx';
@@ -8,40 +9,30 @@ import { DEMO_MODE } from '../lib/demo';
 import { demoJugadores, crearChatDemo } from '../lib/demoData';
 import { PERFILES_FALSOS } from '../lib/perfilesFalsos';
 import { getFakeSwipes, setFakeSwipe, crearFakeChat, limpiarFakePasados } from '../lib/fakeMatches';
-import { MODOS, getModo } from '../lib/modos';
+import { getModo } from '../lib/modos';
 import { solapeDisponibilidad } from '../lib/disponibilidad';
 import { sonidoDesafio, sonidoPasar } from '../lib/sounds';
 import PaywallModal from '../components/PaywallModal.jsx';
 
 const esFakeId = (id) => typeof id === 'string' && (id.startsWith('fake-') || id.startsWith('pair-'));
 
-// El modo dobles/padel filtra según dobles_busca del PERFIL del usuario:
-//   'rival'  → tiene pareja, busca rival → ve a otros que también buscan rival
-//   'pareja' → busca compañero → ve a otros que también buscan compañero
-//   null     → individual (solo aparece en tenis_1v1)
-function doblesQueryParam(profile, modo) {
-  if (modo === 'tenis_1v1') return null; // no filtra por dobles_busca
-  return profile?.dobles_busca || 'rival';
-}
-
 export default function Matchmaking() {
   const { profile, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const [modo, setModo] = useState('tenis_1v1');
+  const { modo, subModo, cambiarSubModo } = useModo();
+
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
 
-  // filtro local de busca en dobles/padel — no modifica el perfil
-  const [filtroDobles, setFiltroDobles] = useState(profile?.dobles_busca || 'rival');
-
   const modoNecesitaFiltro = modo === 'tenis_dobles' || modo === 'padel';
 
   useEffect(() => {
+    if (!modo) { navigate('/modo'); return; }
     if (DEMO_MODE) { setJugadores(demoJugadores); setCargando(false); return; }
     if (profile) cargarCandidatos();
-  }, [profile?.id, modo, filtroDobles]);
+  }, [profile?.id, modo, subModo]);
 
   function ordenarPorDisponibilidad(lista) {
     return [...lista].sort((a, b) =>
@@ -56,11 +47,9 @@ export default function Matchmaking() {
     const deportesModo = getModo(modo).deportes;
 
     const base = PERFILES_FALSOS.filter((f) => {
-      const mismaZona = ubicacionKey(f.provincia, f.isla) === zona;
-      return mismaZona && deportesModo.includes(f.deporte);
+      return ubicacionKey(f.provincia, f.isla) === zona && deportesModo.includes(f.deporte);
     });
 
-    // Modos dobles/padel: mostrar como parejas
     if (modo === 'tenis_dobles' || modo === 'padel') {
       const parejas = [];
       for (let i = 0; i + 1 < base.length; i += 2) {
@@ -81,7 +70,6 @@ export default function Matchmaking() {
       return parejas;
     }
 
-    // Modo individual: perfiles sueltos
     return base.filter((f) => {
       const accion = swipes[f.id];
       if (soloExcluirDesafiados) return accion !== 'desafiado';
@@ -91,7 +79,6 @@ export default function Matchmaking() {
 
   async function cargarCandidatos(soloExcluirDesafiados = false) {
     setCargando(true);
-    const deportesModo = getModo(modo).deportes;
 
     let queryVistos = supabase.from('swipes').select('target_id').eq('swiper_id', user.id).eq('modo', modo);
     if (soloExcluirDesafiados) queryVistos = queryVistos.eq('accion', 'desafiado');
@@ -100,19 +87,17 @@ export default function Matchmaking() {
 
     let query = supabase
       .from('profiles').select('*')
-      .neq('id', user.id).eq('perfil_completo', true)
-      .in('deporte', deportesModo);
+      .neq('id', user.id).eq('perfil_completo', true);
 
     if (profile.isla) query = query.eq('isla', profile.isla);
     else query = query.eq('provincia', profile.provincia).is('isla', null);
 
-    // tenis_1v1: solo jugadores individuales (dobles_busca IS NULL)
     if (modo === 'tenis_1v1') {
-      query = query.is('dobles_busca', null);
-    }
-    // dobles/padel: filtra por el tipo de busca
-    if (modoNecesitaFiltro) {
-      query = query.eq('dobles_busca', filtroDobles);
+      query = query.eq('juega_tenis', true).is('dobles_busca', null);
+    } else if (modo === 'tenis_dobles') {
+      query = query.eq('juega_tenis', true).not('dobles_busca', 'is', null).eq('dobles_busca', subModo);
+    } else if (modo === 'padel') {
+      query = query.eq('juega_padel', true).not('dobles_busca', 'is', null).eq('dobles_busca', subModo);
     }
 
     const { data, error } = await query;
@@ -176,38 +161,31 @@ export default function Matchmaking() {
     cargarCandidatos(true);
   }
 
-  const hayMargen = modoNecesitaFiltro;
-
   return (
     <div className="page" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
 
       <div className="page-header" style={{ padding: 0, marginBottom: 12 }}>
-        <h1>Encuentra tu rival</h1>
+        <h1 style={{ flex: 1 }}>Encuentra tu rival</h1>
+        <button
+          type="button"
+          onClick={() => navigate('/modo')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+            borderRadius: 20, border: '1.5px solid var(--accent)', background: 'transparent',
+            cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--accent)',
+          }}
+        >
+          {modo ? MODO_LABELS[modo] : 'Elegir modo'}
+        </button>
       </div>
 
-      {/* Selector de modo */}
-      <div className="chip-row" style={{ marginBottom: hayMargen ? 8 : 16 }}>
-        {MODOS.map((m) => (
-          <button key={m.id} className={`chip ${modo === m.id ? 'selected' : ''}`} onClick={() => setModo(m.id)}>
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Filtro busca — aparece en tenis dobles Y pádel */}
       {modoNecesitaFiltro && (
         <div className="chip-row" style={{ marginBottom: 16 }}>
-          <button
-            className={`chip ${filtroDobles === 'rival' ? 'selected' : ''}`}
-            onClick={() => setFiltroDobles('rival')}
-          >
+          <button className={`chip ${subModo === 'rival' ? 'selected' : ''}`} onClick={() => cambiarSubModo('rival')}>
             Busco rival
           </button>
-          <button
-            className={`chip ${filtroDobles === 'pareja' ? 'selected' : ''}`}
-            onClick={() => setFiltroDobles('pareja')}
-          >
+          <button className={`chip ${subModo === 'pareja' ? 'selected' : ''}`} onClick={() => cambiarSubModo('pareja')}>
             Busco pareja
           </button>
         </div>
