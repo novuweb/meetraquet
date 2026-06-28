@@ -23,33 +23,7 @@ function Barra({ paso, total }) {
   );
 }
 
-// ─── card de opción (radio) ───────────────────────────────────────────────
-function OpcionCard({ titulo, desc, seleccionada, onClick }) {
-  return (
-    <button type="button" onClick={onClick} style={{
-      width: '100%', textAlign: 'left', padding: '16px 18px', borderRadius: 16,
-      cursor: 'pointer', transition: 'all .2s',
-      border: `2px solid ${seleccionada ? 'var(--accent)' : 'var(--border)'}`,
-      background: seleccionada ? 'rgba(34,197,94,.08)' : 'var(--bg-card)',
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    }}>
-      <div>
-        <p style={{ fontWeight: 700, fontSize: 15, color: seleccionada ? 'var(--accent)' : 'var(--text)', marginBottom: desc ? 2 : 0 }}>{titulo}</p>
-        {desc && <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.4 }}>{desc}</p>}
-      </div>
-      <div style={{
-        width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginLeft: 14,
-        border: `2px solid ${seleccionada ? 'var(--accent)' : 'var(--border)'}`,
-        background: seleccionada ? 'var(--accent)' : 'transparent',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {seleccionada && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
-      </div>
-    </button>
-  );
-}
-
-// ─── card de opción con checkbox (multi-select) ───────────────────────────
+// ─── card checkbox ────────────────────────────────────────────────────────
 function CheckCard({ titulo, desc, seleccionada, onClick }) {
   return (
     <button type="button" onClick={onClick} style={{
@@ -59,8 +33,8 @@ function CheckCard({ titulo, desc, seleccionada, onClick }) {
       background: seleccionada ? 'rgba(34,197,94,.08)' : 'var(--bg-card)',
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     }}>
-      <div>
-        <p style={{ fontWeight: 700, fontSize: 15, color: seleccionada ? 'var(--accent)' : 'var(--text)', marginBottom: desc ? 2 : 0 }}>{titulo}</p>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontWeight: 700, fontSize: 15, color: seleccionada ? 'var(--accent)' : 'var(--text)', marginBottom: desc ? 3 : 0 }}>{titulo}</p>
         {desc && <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.4 }}>{desc}</p>}
       </div>
       <div style={{
@@ -69,7 +43,7 @@ function CheckCard({ titulo, desc, seleccionada, onClick }) {
         background: seleccionada ? 'var(--accent)' : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {seleccionada && <span style={{ color: '#fff', fontSize: 12, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+        {seleccionada && <span style={{ color: '#fff', fontSize: 11, fontWeight: 900 }}>✓</span>}
       </div>
     </button>
   );
@@ -117,10 +91,8 @@ function NavBotones({ onAtras, onContinuar, label, cargando }) {
       )}
       <button
         type={onContinuar ? 'button' : 'submit'}
-        className="btn-primary"
-        style={{ flex: 2 }}
-        onClick={onContinuar}
-        disabled={cargando}
+        className="btn-primary" style={{ flex: 2 }}
+        onClick={onContinuar} disabled={cargando}
       >
         {cargando ? 'Guardando...' : (label || 'Continuar')}
       </button>
@@ -129,58 +101,65 @@ function NavBotones({ onAtras, onContinuar, label, cargando }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// MODALIDADES disponibles (multi-select en cada deporte):
+//
+//   Tenis:   'individual'       → 1v1, solo tus datos
+//            'dobles_pareja'    → tienes pareja, rellenáis los dos
+//            'dobles_busco'     → buscas pareja, solo tus datos
+//
+//   Padel:   'padel_pareja'     → tienes pareja, rellenáis los dos
+//            'padel_busco'      → buscas pareja, solo tus datos
+//
+// No hay pregunta intermedia: la modalidad ya codifica la situación.
+// ═══════════════════════════════════════════════════════════════════════════
+
 export default function Onboarding() {
   const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
+  const [paso, setPaso] = useState(0);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  // ── deportes seleccionados (multi-select) ────────────────────────────────
-  const [deportes, setDeportes] = useState([]); // ['tenis', 'padel']
+  // deportes elegidos: ['tenis', 'padel']
+  const [deportes, setDeportes] = useState([]);
 
-  // ── configuración de tenis ────────────────────────────────────────────────
-  const [tenisModalidades, setTenisModalidades] = useState([]); // ['individual', 'dobles']
-  const [tenisSituacion, setTenisSituacion] = useState(null); // 'tengo_pareja' | 'busco_pareja'
+  // modalidades de tenis (multi): 'individual' | 'dobles_pareja' | 'dobles_busco'
+  const [tenisModos, setTenisModos] = useState([]);
 
-  // ── configuración de padel ────────────────────────────────────────────────
-  const [padelSituacion, setPadelSituacion] = useState(null); // 'tengo_pareja' | 'busco_pareja'
+  // modalidades de padel (multi): 'padel_pareja' | 'padel_busco'
+  const [padelModos, setPadelModos] = useState([]);
 
-  // ── datos jugador 1 ───────────────────────────────────────────────────────
+  // datos jugador 1
   const [foto1, setFoto1] = useState(null);
   const [preview1, setPreview1] = useState(profile?.avatar_url || null);
   const [nombre1, setNombre1] = useState(profile?.nombre || '');
   const [edad1, setEdad1] = useState(profile?.edad || '');
   const [nivel1, setNivel1] = useState(profile?.nivel || '');
 
-  // ── datos jugador 2 (solo si hay pareja) ─────────────────────────────────
+  // datos jugador 2 (solo cuando hay modalidad _pareja)
   const [nombre2, setNombre2] = useState('');
   const [edad2, setEdad2] = useState('');
   const [nivel2, setNivel2] = useState('');
 
-  // ── ubicación ─────────────────────────────────────────────────────────────
+  // ubicación
   const [provincia, setProvincia] = useState(profile?.provincia || '');
   const [isla, setIsla] = useState(profile?.isla || '');
   const [disponibilidad, setDisponibilidad] = useState(profile?.disponibilidad || []);
   const [descripcion, setDescripcion] = useState(profile?.descripcion || '');
   const [codigoReferido, setCodigoReferido] = useState('');
 
-  // ── helpers ───────────────────────────────────────────────────────────────
+  // ── computed ──────────────────────────────────────────────────────────────
   const tieneTenis = deportes.includes('tenis');
   const tienePadel = deportes.includes('padel');
-  const tenisDobles = tieneTenis && tenisModalidades.includes('dobles');
-  const hayParejaTenis = tenisDobles && tenisSituacion === 'tengo_pareja';
-  const hayParejaPadel = tienePadel && padelSituacion === 'tengo_pareja';
-  const necesitaJugador2 = hayParejaTenis || hayParejaPadel;
-  const tenisIndividual = tieneTenis && tenisModalidades.includes('individual');
+  // ¿alguna modalidad requiere datos del jugador 2?
+  const necesitaJugador2 = tenisModos.includes('dobles_pareja') || padelModos.includes('padel_pareja');
 
-  function toggleTenisModalidad(m) {
-    setTenisModalidades((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]);
+  function toggle(arr, setArr, val) {
+    setArr((prev) => prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val]);
   }
 
-  function toggleDeporte(d) {
-    setDeportes((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
-  }
   function handleFoto1(e) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -190,45 +169,30 @@ export default function Onboarding() {
     setDisponibilidad((prev) => prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]);
   }
 
-  // ── construcción dinámica de pantallas ────────────────────────────────────
+  // ── pantallas dinámicas ───────────────────────────────────────────────────
   function buildPantallas() {
     const p = ['deportes'];
-    if (tieneTenis) p.push('tenis_modalidad');
-    if (tenisDobles) p.push('tenis_situacion');
-    if (tienePadel) p.push('padel_situacion');
+    if (tieneTenis) p.push('tenis_modos');
+    if (tienePadel) p.push('padel_modos');
     p.push('jugador1');
     if (necesitaJugador2) p.push('jugador2');
     p.push('ubicacion');
     return p;
   }
 
-  const [paso, setPaso] = useState(0);
   const pantallas = buildPantallas();
   const pantallaActual = pantallas[paso] || 'deportes';
   const totalPasos = pantallas.length;
 
-  function avanzar() {
-    setError('');
-    if (!validar(pantallaActual)) return;
-    setPaso((p) => Math.min(p + 1, totalPasos - 1));
-  }
-  function anterior() {
-    setError('');
-    setPaso((p) => Math.max(p - 1, 0));
-  }
-
   function validar(pantalla) {
     if (pantalla === 'deportes') {
-      if (deportes.length === 0) { setError('Selecciona al menos un deporte.'); return false; }
+      if (!deportes.length) { setError('Selecciona al menos un deporte.'); return false; }
     }
-    if (pantalla === 'tenis_modalidad') {
-      if (tenisModalidades.length === 0) { setError('Elige al menos una modalidad de tenis.'); return false; }
+    if (pantalla === 'tenis_modos') {
+      if (!tenisModos.length) { setError('Elige al menos una modalidad de tenis.'); return false; }
     }
-    if (pantalla === 'tenis_situacion') {
-      if (!tenisSituacion) { setError('Indica si tienes pareja o buscas una.'); return false; }
-    }
-    if (pantalla === 'padel_situacion') {
-      if (!padelSituacion) { setError('Indica si tienes pareja o buscas una.'); return false; }
+    if (pantalla === 'padel_modos') {
+      if (!padelModos.length) { setError('Elige al menos una modalidad de padel.'); return false; }
     }
     if (pantalla === 'jugador1') {
       if (!nombre1.trim()) { setError('Escribe tu nombre.'); return false; }
@@ -241,6 +205,16 @@ export default function Onboarding() {
       if (!nivel2) { setError('Selecciona el nivel de tu compañero/a.'); return false; }
     }
     return true;
+  }
+
+  function avanzar() {
+    setError('');
+    if (!validar(pantallaActual)) return;
+    setPaso((p) => Math.min(p + 1, totalPasos - 1));
+  }
+  function anterior() {
+    setError('');
+    setPaso((p) => Math.max(p - 1, 0));
   }
 
   // ── guardar ───────────────────────────────────────────────────────────────
@@ -262,20 +236,27 @@ export default function Onboarding() {
       }
 
       // deporte en DB
-      let deporteDB;
+      let deporteDB = 'Tenis';
       if (tieneTenis && tienePadel) deporteDB = 'Ambos';
-      else if (tieneTenis) deporteDB = 'Tenis';
-      else deporteDB = 'Pádel';
+      else if (tienePadel) deporteDB = 'Pádel';
 
-      // nombre y nivel (el constraint de nivel fue eliminado para permitir compuestos)
-      const nombreDB = necesitaJugador2 ? `${nombre1.trim()} & ${nombre2.trim()}` : nombre1.trim();
+      // nombre: "Nombre1 & Nombre2" si hay pareja, solo Nombre1 en el resto
+      const nombreDB = necesitaJugador2
+        ? `${nombre1.trim()} & ${nombre2.trim()}`
+        : nombre1.trim();
+
+      // nivel: "Nivel1 / Nivel2" si hay pareja
       const nivelDB = necesitaJugador2 ? `${nivel1} / ${nivel2}` : nivel1;
 
-      // dobles_busca: se aplica al modo dobles/padel
+      // dobles_busca:
+      //   'rival'  → tienen pareja, buscan contra quién jugar
+      //   'pareja' → buscan compañero/a
+      //   null     → solo juegan individual
       let dobles_busca = null;
-      if (hayParejaPadel || hayParejaTenis) dobles_busca = 'rival';
-      else if (padelSituacion === 'busco_pareja' || tenisSituacion === 'busco_pareja') dobles_busca = 'pareja';
-      // Si solo juega individual (sin dobles ni padel) dobles_busca queda null
+      const tienePareja = tenisModos.includes('dobles_pareja') || padelModos.includes('padel_pareja');
+      const buscaPareja = tenisModos.includes('dobles_busco') || padelModos.includes('padel_busco');
+      if (tienePareja) dobles_busca = 'rival';
+      else if (buscaPareja) dobles_busca = 'pareja';
 
       const { error: updateErr } = await supabase.from('profiles').update({
         nombre: nombreDB,
@@ -321,20 +302,20 @@ export default function Onboarding() {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>¿Qué practicas?</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
-            Puedes elegir más de uno. Configuraremos cada deporte por separado.
+            Puedes elegir más de uno.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <CheckCard
               titulo="Tenis"
-              desc="Individual o dobles, en distintas superficies."
+              desc="Individual o dobles."
               seleccionada={deportes.includes('tenis')}
-              onClick={() => toggleDeporte('tenis')}
+              onClick={() => toggle(deportes, setDeportes, 'tenis')}
             />
             <CheckCard
               titulo="Padel"
-              desc="Siempre en pareja, pista cerrada con cristales."
+              desc="En pareja, pista cerrada."
               seleccionada={deportes.includes('padel')}
-              onClick={() => toggleDeporte('padel')}
+              onClick={() => toggle(deportes, setDeportes, 'padel')}
             />
           </div>
           {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
@@ -342,24 +323,32 @@ export default function Onboarding() {
         </div>
       )}
 
-      {/* TENIS: INDIVIDUAL O DOBLES (multi-select) */}
-      {pantallaActual === 'tenis_modalidad' && (
+      {/* TENIS — modalidades */}
+      {pantallaActual === 'tenis_modos' && (
         <div>
           <p style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Tenis</p>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>¿Cómo juegas?</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>Puedes marcar las dos si juegas ambas modalidades.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
+            Puedes marcar varias opciones.
+          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <CheckCard
               titulo="Individual"
-              desc="Partidos de 1 contra 1."
-              seleccionada={tenisModalidades.includes('individual')}
-              onClick={() => toggleTenisModalidad('individual')}
+              desc="Partidos de 1 contra 1. Tus datos solo."
+              seleccionada={tenisModos.includes('individual')}
+              onClick={() => toggle(tenisModos, setTenisModos, 'individual')}
             />
             <CheckCard
-              titulo="Dobles"
-              desc="Partidos de 2 contra 2."
-              seleccionada={tenisModalidades.includes('dobles')}
-              onClick={() => toggleTenisModalidad('dobles')}
+              titulo="Dobles — tenemos pareja"
+              desc="Ya jugáis juntos. Rellenáis los datos de los dos."
+              seleccionada={tenisModos.includes('dobles_pareja')}
+              onClick={() => toggle(tenisModos, setTenisModos, 'dobles_pareja')}
+            />
+            <CheckCard
+              titulo="Dobles — busco pareja"
+              desc="Quieres encontrar compañero/a de dobles. Solo tus datos."
+              seleccionada={tenisModos.includes('dobles_busco')}
+              onClick={() => toggle(tenisModos, setTenisModos, 'dobles_busco')}
             />
           </div>
           {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
@@ -367,49 +356,26 @@ export default function Onboarding() {
         </div>
       )}
 
-      {/* TENIS DOBLES: ¿TIENE PAREJA? */}
-      {pantallaActual === 'tenis_situacion' && (
-        <div>
-          <p style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Tenis dobles</p>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Tu pareja</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>¿Ya tenéis pareja formada o estás buscando compañero?</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <OpcionCard
-              titulo="Tenemos pareja"
-              desc="Ya jugáis juntos y buscáis rivales."
-              seleccionada={tenisSituacion === 'tengo_pareja'}
-              onClick={() => setTenisSituacion('tengo_pareja')}
-            />
-            <OpcionCard
-              titulo="Busco pareja"
-              desc="Juegas solo y quieres encontrar compañero/a de dobles."
-              seleccionada={tenisSituacion === 'busco_pareja'}
-              onClick={() => setTenisSituacion('busco_pareja')}
-            />
-          </div>
-          {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
-          <NavBotones onAtras={anterior} onContinuar={avanzar} />
-        </div>
-      )}
-
-      {/* PADEL: ¿TIENE PAREJA? */}
-      {pantallaActual === 'padel_situacion' && (
+      {/* PADEL — modalidades */}
+      {pantallaActual === 'padel_modos' && (
         <div>
           <p style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Padel</p>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Tu pareja</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>¿Ya tenéis pareja formada o estás buscando compañero?</p>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>¿Cómo juegas?</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
+            Puedes marcar las dos si lo necesitas.
+          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <OpcionCard
+            <CheckCard
               titulo="Tenemos pareja"
-              desc="Ya jugáis juntos y buscáis rivales."
-              seleccionada={padelSituacion === 'tengo_pareja'}
-              onClick={() => setPadelSituacion('tengo_pareja')}
+              desc="Ya jugáis juntos. Rellenáis los datos de los dos."
+              seleccionada={padelModos.includes('padel_pareja')}
+              onClick={() => toggle(padelModos, setPadelModos, 'padel_pareja')}
             />
-            <OpcionCard
+            <CheckCard
               titulo="Busco pareja"
-              desc="Juegas solo y quieres encontrar compañero/a de padel."
-              seleccionada={padelSituacion === 'busco_pareja'}
-              onClick={() => setPadelSituacion('busco_pareja')}
+              desc="Quieres encontrar compañero/a de padel. Solo tus datos."
+              seleccionada={padelModos.includes('padel_busco')}
+              onClick={() => toggle(padelModos, setPadelModos, 'padel_busco')}
             />
           </div>
           {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
@@ -468,7 +434,7 @@ export default function Onboarding() {
         </div>
       )}
 
-      {/* UBICACIÓN Y DISPONIBILIDAD */}
+      {/* UBICACIÓN */}
       {pantallaActual === 'ubicacion' && (
         <form onSubmit={handleSubmit}>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Ubicación y horarios</h1>
@@ -485,8 +451,7 @@ export default function Onboarding() {
             <label>¿Cuándo podéis jugar?</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {DISPONIBILIDAD_OPCIONES.map((o) => (
-                <button
-                  type="button" key={o.id}
+                <button type="button" key={o.id}
                   className={`chip ${disponibilidad.includes(o.id) ? 'selected' : ''}`}
                   onClick={() => toggleDisponibilidad(o.id)}
                 >{o.label}</button>
